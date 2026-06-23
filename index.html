@@ -89,7 +89,14 @@
             animation: shimmer 1.5s infinite;
         }
         /* PDF specific styles to force page breaking rules */
-        .pdf-page-break {
+        .pdf-page {
+            width: 794px;
+            height: 1122px;
+            padding: 30px 40px;
+            box-sizing: border-box;
+            position: relative;
+            overflow: hidden;
+            background: white;
             page-break-after: always;
             break-after: page;
         }
@@ -267,14 +274,14 @@
             <textarea id="hiddenEssayTextarea1" class="absolute opacity-0 pointer-events-none select-none z-0" style="width: 1px; height: 1px; overflow: hidden;" autocomplete="off" spellcheck="false"></textarea>
             <textarea id="hiddenEssayTextarea2" class="absolute opacity-0 pointer-events-none select-none z-0" style="width: 1px; height: 1px; overflow: hidden;" autocomplete="off" spellcheck="false"></textarea>
 
-            <!-- THEME 1 MANUSCRIPT BOX -->
+            <!-- THEME 1 BOX -->
             <div class="bg-white rounded-xl shadow-sm border border-indigo-200 p-5 flex flex-col">
                 <div class="flex items-center justify-between border-b border-indigo-100 pb-3 mb-4">
                     <div class="flex items-center space-x-2">
                         <span class="bg-indigo-600 text-white rounded-lg px-2.5 py-1 text-xs font-bold">テーマ 1</span>
                         <h2 class="font-extrabold text-slate-900 text-base" id="theme1TitleLabel">「将来の夢について」</h2>
                     </div>
-                    <!-- Counter Card (No Whitespace Counted) -->
+                    <!-- Counter Card -->
                     <div class="flex items-center space-x-2 text-xs font-semibold">
                         <span class="text-slate-500">文字数(空白除く)：</span>
                         <span class="font-black text-base text-indigo-600" id="currentCount1">0</span>
@@ -312,14 +319,14 @@
                 </div>
             </div>
 
-            <!-- THEME 2 MANUSCRIPT BOX -->
+            <!-- THEME 2 BOX -->
             <div class="bg-white rounded-xl shadow-sm border border-emerald-200 p-5 flex flex-col">
                 <div class="flex items-center justify-between border-b border-emerald-100 pb-3 mb-4">
                     <div class="flex items-center space-x-2">
                         <span class="bg-emerald-600 text-white rounded-lg px-2.5 py-1 text-xs font-bold">テーマ 2</span>
                         <h2 class="font-extrabold text-slate-900 text-base" id="theme2TitleLabel">「これまでに一番がんばったこと」</h2>
                     </div>
-                    <!-- Counter Card (No Whitespace Counted) -->
+                    <!-- Counter Card -->
                     <div class="flex items-center space-x-2 text-xs font-semibold">
                         <span class="text-slate-500">文字数(空白除く)：</span>
                         <span class="font-black text-base text-emerald-600" id="currentCount2">0</span>
@@ -501,58 +508,60 @@
                 </div>
 
                 <!-- Printable Container starts here (html2pdf wrapper) -->
-                <div id="printableArea" class="mx-auto max-w-[794px] text-slate-900">
+                <div id="printableArea" class="mx-auto flex flex-col items-center" style="width: 794px;">
                     
                     <!-- ================= PAGE 1: THEME 1 ================= -->
-                    <div class="bg-white p-10 sm:p-12 shadow-md border border-slate-200 rounded-sm mb-6 relative pdf-page-break" style="min-height: 1115px; box-sizing: border-box;">
-                        <div class="genko-yoshi">
+                    <div class="pdf-page shadow-md border border-slate-200">
+                        <div class="genko-yoshi h-full flex flex-col justify-between">
                             
-                            <!-- Header Grid containing HUGE characters count stamp -->
-                            <div class="flex justify-between items-start border-b-2 border-emerald-800 pb-4 mb-4">
-                                <div>
-                                    <h1 class="text-2xl font-black text-emerald-950 tracking-wider">作　文　提　出　シ　ー　ト</h1>
-                                    <div class="text-xs text-emerald-800 font-bold mt-1">【テーマ 1】 25文字 × <span class="printRowsCount1">16</span>行 設定</div>
+                            <div>
+                                <!-- Header Grid containing HUGE characters count stamp -->
+                                <div class="flex justify-between items-start border-b-2 border-emerald-800 pb-3 mb-3">
+                                    <div>
+                                        <h1 class="text-xl font-black text-emerald-950 tracking-wider">作　文　提　出　シ　ー　ト</h1>
+                                        <div class="text-[10px] text-emerald-800 font-bold mt-0.5">【テーマ 1】 25文字 × <span class="printRowsCount1">16</span>行 設定</div>
+                                    </div>
+                                    <!-- HUGE CHARACTERS COUNT DISPLAY -->
+                                    <div class="bg-gradient-to-br from-amber-500 to-amber-600 text-white rounded-lg py-1 px-3 shadow-sm text-center border border-amber-300">
+                                        <span class="text-[8px] font-bold block uppercase tracking-wider text-amber-100 leading-none">テーマ1 文字数(空白除)</span>
+                                        <span class="text-2xl font-black tracking-tighter" id="printCharCount1">0</span>
+                                        <span class="text-[9px] font-bold text-amber-100"> 文字</span>
+                                    </div>
                                 </div>
-                                <!-- HUGE CHARACTERS COUNT DISPLAY (Request-satisfied, space-excluded) -->
-                                <div class="bg-gradient-to-br from-amber-500 to-amber-600 text-white rounded-xl py-2 px-4 shadow-md text-center border-2 border-amber-300">
-                                    <span class="text-[9px] font-bold block uppercase tracking-wider text-amber-100 leading-none">テーマ1 文字数(空白除)</span>
-                                    <span class="text-3xl font-black tracking-tighter" id="printCharCount1">0</span>
-                                    <span class="text-[10px] font-bold text-amber-100"> 文字</span>
-                                </div>
-                            </div>
 
-                            <!-- Metainfo Row -->
-                            <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 mb-6 grid grid-cols-1 md:grid-cols-2 gap-3 text-xs text-slate-800">
-                                <div>
-                                    <div class="text-[10px] text-slate-500 font-bold">【作文テーマ1】</div>
-                                    <div class="text-sm font-extrabold text-emerald-950 mt-1" id="printTheme1">「未入力」</div>
-                                    <div class="text-[9px] text-emerald-800 mt-0.5 font-bold">指定文字数：<span id="printThemeRange1"></span>字</div>
+                                <!-- Metainfo Row -->
+                                <div class="bg-slate-50 border border-slate-200 rounded-lg p-3 mb-4 grid grid-cols-1 md:grid-cols-2 gap-2 text-xs text-slate-800">
+                                    <div>
+                                        <div class="text-[9px] text-slate-500 font-bold">【作文テーマ1】</div>
+                                        <div class="text-xs font-extrabold text-emerald-950 mt-0.5" id="printTheme1">「未入力」</div>
+                                        <div class="text-[8px] text-emerald-800 mt-0.5 font-bold">指定文字数：<span id="printThemeRange1"></span>字</div>
+                                    </div>
+                                    <div class="grid grid-cols-3 gap-1 border-t md:border-t-0 md:border-l border-slate-200 pt-2 md:pt-0 md:pl-4">
+                                        <div class="col-span-1">
+                                            <span class="text-[9px] text-slate-500 block font-semibold">所属</span>
+                                            <span class="font-bold text-slate-900 printGradeClass text-[10px]"> </span>
+                                        </div>
+                                        <div class="col-span-1">
+                                            <span class="text-[9px] text-slate-500 block font-semibold">番号</span>
+                                            <span class="font-bold text-slate-900 printNumber text-[10px]"> </span>
+                                        </div>
+                                        <div class="col-span-1">
+                                            <span class="text-[9px] text-slate-500 block font-semibold">氏名</span>
+                                            <span class="font-extrabold text-slate-900 truncate printName text-[10px]"> </span>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div class="grid grid-cols-3 gap-2 border-t md:border-t-0 md:border-l border-slate-200 pt-3 md:pt-0 md:pl-5">
-                                    <div class="col-span-1">
-                                        <span class="text-[10px] text-slate-500 block font-semibold">所属</span>
-                                        <span class="font-bold text-slate-900 printGradeClass"> </span>
-                                    </div>
-                                    <div class="col-span-1">
-                                        <span class="text-[10px] text-slate-500 block font-semibold">番号</span>
-                                        <span class="font-bold text-slate-900 printNumber"> </span>
-                                    </div>
-                                    <div class="col-span-1">
-                                        <span class="text-[10px] text-slate-500 block font-semibold">氏名</span>
-                                        <span class="font-extrabold text-slate-900 truncate printName"> </span>
-                                    </div>
-                                </div>
-                            </div>
 
-                            <!-- Main Grid Section on Paper -->
-                            <div class="mb-4">
-                                <div id="printGrid1" class="grid grid-cols-25 border-r border-b border-emerald-800/40 gap-0 bg-white">
-                                    <!-- Dynamic layout via JS -->
+                                <!-- Main Grid Section on Paper -->
+                                <div class="mb-2">
+                                    <div id="printGrid1" class="grid grid-cols-25 border-r border-b border-emerald-800/40 gap-0 bg-white">
+                                        <!-- Dynamic layout via JS -->
+                                    </div>
                                 </div>
                             </div>
 
                             <!-- Footer -->
-                            <div class="flex justify-between items-center text-[9px] text-slate-400 mt-8 border-t border-slate-100 pt-3">
+                            <div class="flex justify-between items-center text-[8px] text-slate-400 border-t border-slate-100 pt-2 pb-1">
                                 <span>提出用作文シート - 1ページ目 (テーマ1)</span>
                                 <span>用紙全体のマス: <span id="printGridCount1">0</span>マス</span>
                             </div>
@@ -560,55 +569,57 @@
                     </div>
 
                     <!-- ================= PAGE 2: THEME 2 ================= -->
-                    <div class="bg-white p-10 sm:p-12 shadow-md border border-slate-200 rounded-sm relative" style="min-height: 1115px; box-sizing: border-box;">
-                        <div class="genko-yoshi">
+                    <div class="pdf-page shadow-md border border-slate-200">
+                        <div class="genko-yoshi h-full flex flex-col justify-between">
                             
-                            <!-- Header Grid containing HUGE characters count stamp -->
-                            <div class="flex justify-between items-start border-b-2 border-emerald-800 pb-4 mb-4">
-                                <div>
-                                    <h1 class="text-2xl font-black text-emerald-950 tracking-wider">作　文　提　出　シ　ー　ト</h1>
-                                    <div class="text-xs text-emerald-800 font-bold mt-1">【テーマ 2】 25文字 × <span class="printRowsCount2">16</span>行 設定</div>
+                            <div>
+                                <!-- Header Grid containing HUGE characters count stamp -->
+                                <div class="flex justify-between items-start border-b-2 border-emerald-800 pb-3 mb-3">
+                                    <div>
+                                        <h1 class="text-xl font-black text-emerald-950 tracking-wider">作　文　提　出　シ　ー　ト</h1>
+                                        <div class="text-[10px] text-emerald-800 font-bold mt-0.5">【テーマ 2】 25文字 × <span class="printRowsCount2">16</span>行 設定</div>
+                                    </div>
+                                    <!-- HUGE CHARACTERS COUNT DISPLAY -->
+                                    <div class="bg-gradient-to-br from-emerald-600 to-emerald-700 text-white rounded-lg py-1 px-3 shadow-sm text-center border border-emerald-400">
+                                        <span class="text-[8px] font-bold block uppercase tracking-wider text-emerald-100 leading-none">テーマ2 文字数(空白除)</span>
+                                        <span class="text-2xl font-black tracking-tighter" id="printCharCount2">0</span>
+                                        <span class="text-[9px] font-bold text-emerald-100"> 文字</span>
+                                    </div>
                                 </div>
-                                <!-- HUGE CHARACTERS COUNT DISPLAY (Request-satisfied, space-excluded) -->
-                                <div class="bg-gradient-to-br from-emerald-600 to-emerald-700 text-white rounded-xl py-2 px-4 shadow-md text-center border-2 border-emerald-400">
-                                    <span class="text-[9px] font-bold block uppercase tracking-wider text-emerald-100 leading-none">テーマ2 文字数(空白除)</span>
-                                    <span class="text-3xl font-black tracking-tighter" id="printCharCount2">0</span>
-                                    <span class="text-[10px] font-bold text-emerald-100"> 文字</span>
-                                </div>
-                            </div>
 
-                            <!-- Metainfo Row -->
-                            <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 mb-6 grid grid-cols-1 md:grid-cols-2 gap-3 text-xs text-slate-800">
-                                <div>
-                                    <div class="text-[10px] text-slate-500 font-bold">【作文テーマ2】</div>
-                                    <div class="text-sm font-extrabold text-emerald-950 mt-1" id="printTheme2">「未入力」</div>
-                                    <div class="text-[9px] text-emerald-800 mt-0.5 font-bold">指定文字数：<span id="printThemeRange2"></span>字</div>
+                                <!-- Metainfo Row -->
+                                <div class="bg-slate-50 border border-slate-200 rounded-lg p-3 mb-4 grid grid-cols-1 md:grid-cols-2 gap-2 text-xs text-slate-800">
+                                    <div>
+                                        <div class="text-[9px] text-slate-500 font-bold">【作文テーマ2】</div>
+                                        <div class="text-xs font-extrabold text-emerald-950 mt-0.5" id="printTheme2">「未入力」</div>
+                                        <div class="text-[8px] text-emerald-800 mt-0.5 font-bold">指定文字数：<span id="printThemeRange2"></span>字</div>
+                                    </div>
+                                    <div class="grid grid-cols-3 gap-1 border-t md:border-t-0 md:border-l border-slate-200 pt-2 md:pt-0 md:pl-4">
+                                        <div class="col-span-1">
+                                            <span class="text-[9px] text-slate-500 block font-semibold">所属</span>
+                                            <span class="font-bold text-slate-900 printGradeClass text-[10px]"> </span>
+                                        </div>
+                                        <div class="col-span-1">
+                                            <span class="text-[9px] text-slate-500 block font-semibold">番号</span>
+                                            <span class="font-bold text-slate-900 printNumber text-[10px]"> </span>
+                                        </div>
+                                        <div class="col-span-1">
+                                            <span class="text-[9px] text-slate-500 block font-semibold">氏名</span>
+                                            <span class="font-extrabold text-slate-900 truncate printName text-[10px]"> </span>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div class="grid grid-cols-3 gap-2 border-t md:border-t-0 md:border-l border-slate-200 pt-3 md:pt-0 md:pl-5">
-                                    <div class="col-span-1">
-                                        <span class="text-[10px] text-slate-500 block font-semibold">所属</span>
-                                        <span class="font-bold text-slate-900 printGradeClass"> </span>
-                                    </div>
-                                    <div class="col-span-1">
-                                        <span class="text-[10px] text-slate-500 block font-semibold">番号</span>
-                                        <span class="font-bold text-slate-900 printNumber"> </span>
-                                    </div>
-                                    <div class="col-span-1">
-                                        <span class="text-[10px] text-slate-500 block font-semibold">氏名</span>
-                                        <span class="font-extrabold text-slate-900 truncate printName"> </span>
-                                    </div>
-                                </div>
-                            </div>
 
-                            <!-- Main Grid Section on Paper -->
-                            <div class="mb-4">
-                                <div id="printGrid2" class="grid grid-cols-25 border-r border-b border-emerald-800/40 gap-0 bg-white">
-                                    <!-- Dynamic layout via JS -->
+                                <!-- Main Grid Section on Paper -->
+                                <div class="mb-2">
+                                    <div id="printGrid2" class="grid grid-cols-25 border-r border-b border-emerald-800/40 gap-0 bg-white">
+                                        <!-- Dynamic layout via JS -->
+                                    </div>
                                 </div>
                             </div>
 
                             <!-- Footer -->
-                            <div class="flex justify-between items-center text-[9px] text-slate-400 mt-8 border-t border-slate-100 pt-3">
+                            <div class="flex justify-between items-center text-[8px] text-slate-400 border-t border-slate-100 pt-2 pb-1">
                                 <span>提出用作文シート - 2ページ目 (テーマ2)</span>
                                 <span>用紙全体のマス: <span id="printGridCount2">0</span>マス</span>
                             </div>
@@ -1330,7 +1341,7 @@ ${state.essayText2 || '（未入力です）'}
 `;
 
             const apiKey = "";
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
 
             const payload = {
                 contents: [{ parts: [{ text: userQuery }] }],
@@ -1497,7 +1508,7 @@ ${state.essayText2 || '（未入力です）'}
                 });
             });
 
-            // Manual Save and Manual Load action click listeners (Upgraded to custom confirm modal)
+            // Manual Save and Manual Load action click listeners
             dom.manualSaveBtn.addEventListener('click', async () => {
                 await saveData();
                 showToast('現在の内容を一時保存しました！');
@@ -1599,7 +1610,7 @@ ${state.essayText2 || '（未入力です）'}
                 document.body.removeChild(tempTextArea);
             });
 
-            // Apply AI rewriting (Upgraded to custom confirm modal)
+            // Apply AI rewriting
             dom.applyRewriteBtn.addEventListener('click', () => {
                 const text = dom.aiRewrittenText.textContent.trim();
                 if (text) {
@@ -1624,7 +1635,7 @@ ${state.essayText2 || '（未入力です）'}
                 }
             });
 
-            // Global Clear Event (Upgraded to custom confirm modal)
+            // Global Clear Event
             dom.clearBtn.addEventListener('click', () => {
                 showCustomConfirm(
                     '作文と生徒情報の完全消去',
@@ -1716,6 +1727,10 @@ ${state.essayText2 || '（未入力です）'}
                         unit: 'mm', 
                         format: 'a4', 
                         orientation: 'portrait' 
+                    },
+                    pagebreak: {
+                        mode: ['css', 'legacy'],
+                        before: '.pdf-page'
                     }
                 };
 
