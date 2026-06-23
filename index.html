@@ -92,7 +92,7 @@
         .pdf-page {
             width: 794px;
             height: 1122px;
-            padding: 30px 40px;
+            padding: 35px 45px;
             box-sizing: border-box;
             position: relative;
             overflow: hidden;
@@ -1713,15 +1713,34 @@ ${state.essayText2 || '（未入力です）'}
 
                 const safeName = `作文2枚組_${state.grade || '無所属'}_${state.classVal || ''}_${state.number || '0'}_${state.name || '未設定'}.pdf`;
 
+                // iOS / iPadOS Safari compatibility engine setup
+                // Clone printableArea to document body root to bypass CSS fixed and transform scaling rendering issues on Safari
+                const printContainer = document.getElementById('printableArea');
+                const printClone = printContainer.cloneNode(true);
+                
+                // Set absolute outside viewport styles for the clone to avoid layout shift
+                printClone.style.position = 'absolute';
+                printClone.style.top = '-9999px';
+                printClone.style.left = '0';
+                printClone.style.width = '794px';
+                printClone.style.display = 'block';
+                document.body.appendChild(printClone);
+
+                // Check user agent to optimize scaling for iPad/iPhone (avoid WebGL/RAM crash)
+                const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+                const optimalScale = isIOS ? 1.5 : 2; // scale: 1.5 is extremely stable and sharp on iOS Safari
+
                 const opt = {
                     margin:       [0, 0, 0, 0],
                     filename:     safeName,
-                    image:        { type: 'jpeg', quality: 0.98 },
+                    image:        { type: 'jpeg', quality: 0.95 },
                     html2canvas:  { 
-                        scale: 2, 
+                        scale: optimalScale, 
                         useCORS: true,
                         letterRendering: true,
-                        logging: false
+                        logging: false,
+                        scrollY: 0,
+                        scrollX: 0
                     },
                     jsPDF:        { 
                         unit: 'mm', 
@@ -1734,13 +1753,20 @@ ${state.essayText2 || '（未入力です）'}
                     }
                 };
 
-                html2pdf().from(dom.printableArea).set(opt).save().then(() => {
-                    showToast('2ページPDFの作成・ダウンロードが完了しました！');
-                    closeModal();
-                }).catch(err => {
-                    console.error('PDF error: ', err);
-                    showToast('PDFの出力処理でエラーが発生しました。', 'error');
-                });
+                // Wait 150ms for cloned element render tree stabilization before processing
+                setTimeout(() => {
+                    html2pdf().from(printClone).set(opt).save().then(() => {
+                        showToast('2ページPDFの作成・ダウンロードが完了しました！');
+                        document.body.removeChild(printClone); // Clean up memory
+                        closeModal();
+                    }).catch(err => {
+                        console.error('PDF error: ', err);
+                        showToast('PDFの出力処理でエラーが発生しました。', 'error');
+                        if (printClone.parentNode) {
+                            document.body.removeChild(printClone);
+                        }
+                    });
+                }, 150);
             });
         }
 
@@ -1759,7 +1785,6 @@ ${state.essayText2 || '（未入力です）'}
             // Run Cloud initialization process
             await initializeFirebase();
         };
-
     </script>
 </body>
 </html>
