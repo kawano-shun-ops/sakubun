@@ -1,0 +1,1750 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>作文作成サポートシステム（2テーマ同時入力・自動保存・マルチページPDF対応）</title>
+    <!-- Tailwind CSS for modern rapid UI development -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome for Premium UI Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts for Elegant Japanese Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=BIZ+UDGothic:wght@400;700&family=BIZ+UDMincho:wght@400;700&family=Inter:wght@400;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- html2pdf.js for Client-Side Premium PDF Generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+    <style>
+        body {
+            font-family: 'Noto Sans JP', 'Inter', sans-serif;
+            background-color: #f1f5f9;
+        }
+        /* Genko Yoshi (Manuscript Paper) Styling */
+        .genko-yoshi {
+            font-family: 'BIZ UDMincho', 'Hiragino Mincho ProN', 'serif';
+        }
+        .grid-cell {
+            aspect-ratio: 1 / 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.15rem;
+            position: relative;
+            transition: all 0.15s ease;
+            user-select: none;
+        }
+        /* Classic Genko Yoshi Emerald Lines */
+        .grid-line-emerald {
+            border-color: rgba(16, 185, 129, 0.35);
+        }
+        /* Custom scrollbar for manuscript paper scrolling */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        /* Virtual Caret blinking effect for direct writing experience */
+        @keyframes caretBlink {
+            0%, 100% { border-left-color: #10b981; }
+            50% { border-left-color: transparent; }
+        }
+        .virtual-caret {
+            position: absolute;
+            top: 10%;
+            left: 2px;
+            height: 80%;
+            border-left: 3px solid #10b981;
+            animation: caretBlink 1s infinite;
+            pointer-events: none;
+            z-index: 10;
+        }
+        /* Grid cell focus style */
+        .grid-cell.cell-focused {
+            background-color: rgba(16, 185, 129, 0.05);
+        }
+        .grid-cell.cell-hover:hover {
+            background-color: rgba(16, 185, 129, 0.08);
+            cursor: text;
+        }
+        /* Shimmer effect for AI loading */
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+        .shimmer-loading {
+            background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+        }
+        /* PDF specific styles to force page breaking rules */
+        .pdf-page-break {
+            page-break-after: always;
+            break-after: page;
+        }
+    </style>
+</head>
+<body class="min-h-screen text-slate-800 flex flex-col">
+
+    <!-- Header bar -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 py-3 sm:px-6 lg:px-8 flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <div class="bg-emerald-600 text-white p-2 rounded-lg shadow-md shadow-emerald-200">
+                    <i class="fa-solid fa-book-open text-lg"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold tracking-tight text-slate-900">2テーマ同時入力・作文作成システム</h1>
+                    <p class="text-xs text-slate-500 hidden sm:block font-medium">テーマ1とテーマ2を並べて書き込み、2ページの美しいPDFを一括出力。自動一時保存機能つき</p>
+                </div>
+            </div>
+            <!-- Settings panel toggle -->
+            <button id="toggleSettingsBtn" class="flex items-center space-x-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-lg transition duration-200 text-sm font-medium">
+                <i class="fa-solid fa-sliders"></i>
+                <span>お題・文字数設定</span>
+            </button>
+        </div>
+    </header>
+
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 py-6 sm:px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- Left Column: Student info & global controls (4 cols) -->
+        <section class="lg:col-span-4 flex flex-col space-y-6">
+            
+            <!-- Settings Panel (Collapsible) -->
+            <div id="settingsPanel" class="bg-amber-50 border border-amber-200 rounded-xl p-5 shadow-sm transition-all duration-300 hidden">
+                <div class="flex justify-between items-center mb-4 pb-2 border-b border-amber-200">
+                    <h3 class="font-bold text-amber-900 flex items-center space-x-2">
+                        <i class="fa-solid fa-gears text-amber-700"></i>
+                        <span>教員・管理者用 お題・文字数設定</span>
+                    </h3>
+                    <button id="closeSettingsBtn" class="text-amber-700 hover:text-amber-900">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+                <div class="space-y-4">
+                    <div class="p-3 bg-white rounded-lg border border-amber-100">
+                        <span class="block text-xs font-bold text-emerald-700 mb-2">テーマ 1 設定</span>
+                        <div class="space-y-3">
+                            <div>
+                                <label class="block text-xs text-slate-600 mb-1">お題タイトル</label>
+                                <input type="text" id="configTheme1" class="w-full border border-slate-200 rounded-lg p-2 bg-slate-50 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none" value="「将来の夢について」">
+                            </div>
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label class="block text-xs text-slate-600 mb-1">最小文字数</label>
+                                    <input type="number" id="configTheme1Min" class="w-full border border-slate-200 rounded-lg p-2 bg-slate-50 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none" value="300" min="0" step="10">
+                                </div>
+                                <div>
+                                    <label class="block text-xs text-slate-600 mb-1">最大文字数</label>
+                                    <input type="number" id="configTheme1Max" class="w-full border border-slate-200 rounded-lg p-2 bg-slate-50 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none" value="400" min="10" step="10">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="p-3 bg-white rounded-lg border border-amber-100">
+                        <span class="block text-xs font-bold text-emerald-700 mb-2">テーマ 2 設定</span>
+                        <div class="space-y-3">
+                            <div>
+                                <label class="block text-xs text-slate-600 mb-1">お題タイトル</label>
+                                <input type="text" id="configTheme2" class="w-full border border-slate-200 rounded-lg p-2 bg-slate-50 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none" value="「これまでに一番がんばったこと」">
+                            </div>
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label class="block text-xs text-slate-600 mb-1">最小文字数</label>
+                                    <input type="number" id="configTheme2Min" class="w-full border border-slate-200 rounded-lg p-2 bg-slate-50 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none" value="150" min="0" step="10">
+                                </div>
+                                <div>
+                                    <label class="block text-xs text-slate-600 mb-1">最大文字数</label>
+                                    <input type="number" id="configTheme2Max" class="w-full border border-slate-200 rounded-lg p-2 bg-slate-50 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none" value="200" min="10" step="10">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button id="saveConfigBtn" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-4 rounded-lg shadow transition duration-200 text-sm">
+                        お題と文字数設定を保存する
+                    </button>
+                </div>
+            </div>
+
+            <!-- Save / Recovery Status Area -->
+            <div class="bg-white rounded-xl shadow-sm border border-emerald-100 p-5">
+                <h2 class="font-bold text-slate-900 mb-3 flex items-center space-x-2 text-base pb-2 border-b border-slate-100">
+                    <i class="fa-solid fa-cloud-arrow-up text-emerald-600"></i>
+                    <span>作文の一時保存</span>
+                </h2>
+                <div class="flex items-center justify-between p-2.5 bg-slate-50 rounded-lg border border-slate-200 mb-3 text-xs">
+                    <span class="text-slate-500">保存状態:</span>
+                    <span id="saveStatus" class="font-bold text-slate-700 flex items-center gap-1">
+                        <i class="fa-solid fa-circle-notch animate-spin text-emerald-600"></i> 接続中...
+                    </span>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <button id="manualSaveBtn" class="bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-800 text-xs font-bold py-2 px-3 rounded-lg transition flex items-center justify-center space-x-1.5">
+                        <i class="fa-solid fa-floppy-disk"></i>
+                        <span>今すぐ保存</span>
+                    </button>
+                    <button id="manualLoadBtn" class="bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-700 text-xs font-bold py-2 px-3 rounded-lg transition flex items-center justify-center space-x-1.5">
+                        <i class="fa-solid fa-arrows-rotate"></i>
+                        <span>保存から復元</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Student Profile Input Card -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+                <h2 class="font-bold text-slate-900 mb-4 flex items-center space-x-2 text-base pb-2 border-b border-slate-100">
+                    <i class="fa-solid fa-graduation-cap text-indigo-600"></i>
+                    <span>1. 児童・生徒情報を入力してください</span>
+                </h2>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">学年 <span class="text-red-500">*</span></label>
+                        <input type="text" id="studentGrade" placeholder="例: 小学校3年" class="w-full border border-slate-200 rounded-lg p-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none bg-slate-50 focus:bg-white" required>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">クラス <span class="text-red-500">*</span></label>
+                        <input type="text" id="studentClass" placeholder="例: 2組" class="w-full border border-slate-200 rounded-lg p-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none bg-slate-50 focus:bg-white" required>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">出席番号</label>
+                        <input type="number" id="studentNumber" placeholder="例: 15" class="w-full border border-slate-200 rounded-lg p-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none bg-slate-50 focus:bg-white">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">名前 <span class="text-red-500">*</span></label>
+                        <input type="text" id="studentName" placeholder="例: 山田 太郎" class="w-full border border-slate-200 rounded-lg p-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none bg-slate-50 focus:bg-white" required>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Assistants Card -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 space-y-3">
+                <h2 class="font-bold text-slate-900 flex items-center space-x-2 text-base pb-2 border-b border-slate-100">
+                    <i class="fa-solid fa-wand-magic-sparkles text-emerald-600"></i>
+                    <span>入力お助けツール</span>
+                </h2>
+                <button id="zenkakuConvertBtn" class="w-full flex items-center justify-center space-x-2 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl py-2.5 transition duration-150">
+                    <i class="fa-solid fa-arrows-rotate"></i>
+                    <span>両方の作文の半角文字を全角に変換</span>
+                </button>
+            </div>
+
+            <!-- Action Buttons Panel -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex flex-col space-y-3">
+                <button id="aiAssessBtn" class="w-full bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white font-extrabold py-3.5 px-6 rounded-xl shadow-md shadow-violet-100 hover:shadow-violet-200 transition duration-200 flex items-center justify-center space-x-2 text-sm">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i>
+                    <span>AI先生に両方の作文を添削してもらう</span>
+                </button>
+                <button id="clearBtn" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 px-6 rounded-xl transition duration-200 flex items-center justify-center space-x-2 text-xs">
+                    <i class="fa-solid fa-trash-can"></i>
+                    <span>すべての入力を消去（クリア）</span>
+                </button>
+                <button id="confirmBtn" class="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-extrabold py-4 px-8 rounded-xl shadow-lg shadow-emerald-200 hover:shadow-emerald-300 transition duration-200 flex items-center justify-center space-x-2 text-base">
+                    <i class="fa-solid fa-file-pdf"></i>
+                    <span>確認・2ページPDF出力へ</span>
+                </button>
+            </div>
+
+        </section>
+
+        <!-- Right Column: Dual Interactive Manuscript editors (8 cols) -->
+        <section class="lg:col-span-8 flex flex-col space-y-6">
+            
+            <!-- INVISIBLE TEXTAREAS to handle Japanese input method natively for each theme -->
+            <textarea id="hiddenEssayTextarea1" class="absolute opacity-0 pointer-events-none select-none z-0" style="width: 1px; height: 1px; overflow: hidden;" autocomplete="off" spellcheck="false"></textarea>
+            <textarea id="hiddenEssayTextarea2" class="absolute opacity-0 pointer-events-none select-none z-0" style="width: 1px; height: 1px; overflow: hidden;" autocomplete="off" spellcheck="false"></textarea>
+
+            <!-- THEME 1 MANUSCRIPT BOX -->
+            <div class="bg-white rounded-xl shadow-sm border border-indigo-200 p-5 flex flex-col">
+                <div class="flex items-center justify-between border-b border-indigo-100 pb-3 mb-4">
+                    <div class="flex items-center space-x-2">
+                        <span class="bg-indigo-600 text-white rounded-lg px-2.5 py-1 text-xs font-bold">テーマ 1</span>
+                        <h2 class="font-extrabold text-slate-900 text-base" id="theme1TitleLabel">「将来の夢について」</h2>
+                    </div>
+                    <!-- Counter Card (No Whitespace Counted) -->
+                    <div class="flex items-center space-x-2 text-xs font-semibold">
+                        <span class="text-slate-500">文字数(空白除く)：</span>
+                        <span class="font-black text-base text-indigo-600" id="currentCount1">0</span>
+                        <span class="text-slate-400">/</span>
+                        <span class="text-slate-600" id="targetCount1">300〜400</span>字
+                        <span id="remainingText1" class="ml-2 px-2 py-0.5 bg-amber-100 text-amber-800 rounded font-bold text-[11px]">あと300字</span>
+                    </div>
+                </div>
+
+                <div class="relative w-full bg-slate-100 rounded-full h-2 mb-4 overflow-hidden">
+                    <div id="progressBar1" class="bg-gradient-to-r from-amber-400 to-indigo-500 h-full w-0 transition-all duration-300"></div>
+                </div>
+
+                <!-- Direct Type Area Layout Wrapper -->
+                <div class="overflow-x-auto border border-slate-200 rounded-xl bg-[#FAF9F5] p-4 custom-scrollbar flex justify-center items-start min-h-[350px] relative">
+                    <div id="manuscriptPaper1" class="genko-yoshi bg-[#FAF9F5] min-w-[580px] w-full max-w-[620px] relative z-10 select-none">
+                        
+                        <!-- Header names on paper -->
+                        <div class="flex justify-between items-end mb-2 pb-2 border-b border-emerald-800/10 text-xs font-bold text-emerald-950">
+                            <div>【作文用紙 - テーマ 1】</div>
+                            <div class="flex space-x-3">
+                                <span><span class="previewGrade">　</span> 年</span>
+                                <span><span class="previewClass">　</span> 組</span>
+                                <span><span class="previewNumber">　</span> 番</span>
+                                <span>氏名: <span class="previewName text-emerald-900 font-extrabold">未入力</span></span>
+                            </div>
+                        </div>
+
+                        <!-- 25 Column Grid Header Numbers -->
+                        <div class="grid grid-cols-25 gap-0 text-[9px] text-center font-semibold text-emerald-800/30 mb-1 select-none colNumbers"></div>
+
+                        <!-- Main Grid System -->
+                        <div id="manuscriptGrid1" class="grid grid-cols-25 border-r border-b grid-line-emerald gap-0 bg-white shadow-sm relative"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- THEME 2 MANUSCRIPT BOX -->
+            <div class="bg-white rounded-xl shadow-sm border border-emerald-200 p-5 flex flex-col">
+                <div class="flex items-center justify-between border-b border-emerald-100 pb-3 mb-4">
+                    <div class="flex items-center space-x-2">
+                        <span class="bg-emerald-600 text-white rounded-lg px-2.5 py-1 text-xs font-bold">テーマ 2</span>
+                        <h2 class="font-extrabold text-slate-900 text-base" id="theme2TitleLabel">「これまでに一番がんばったこと」</h2>
+                    </div>
+                    <!-- Counter Card (No Whitespace Counted) -->
+                    <div class="flex items-center space-x-2 text-xs font-semibold">
+                        <span class="text-slate-500">文字数(空白除く)：</span>
+                        <span class="font-black text-base text-emerald-600" id="currentCount2">0</span>
+                        <span class="text-slate-400">/</span>
+                        <span class="text-slate-600" id="targetCount2">150〜200</span>字
+                        <span id="remainingText2" class="ml-2 px-2 py-0.5 bg-amber-100 text-amber-800 rounded font-bold text-[11px]">あと150字</span>
+                    </div>
+                </div>
+
+                <div class="relative w-full bg-slate-100 rounded-full h-2 mb-4 overflow-hidden">
+                    <div id="progressBar2" class="bg-gradient-to-r from-amber-400 to-emerald-500 h-full w-0 transition-all duration-300"></div>
+                </div>
+
+                <!-- Direct Type Area Layout Wrapper -->
+                <div class="overflow-x-auto border border-slate-200 rounded-xl bg-[#FAF9F5] p-4 custom-scrollbar flex justify-center items-start min-h-[350px] relative">
+                    <div id="manuscriptPaper2" class="genko-yoshi bg-[#FAF9F5] min-w-[580px] w-full max-w-[620px] relative z-10 select-none">
+                        
+                        <!-- Header names on paper -->
+                        <div class="flex justify-between items-end mb-2 pb-2 border-b border-emerald-800/10 text-xs font-bold text-emerald-950">
+                            <div>【作文用紙 - テーマ 2】</div>
+                            <div class="flex space-x-3">
+                                <span><span class="previewGrade">　</span> 年</span>
+                                <span><span class="previewClass">　</span> 組</span>
+                                <span><span class="previewNumber">　</span> 番</span>
+                                <span>氏名: <span class="previewName text-emerald-900 font-extrabold">未入力</span></span>
+                            </div>
+                        </div>
+
+                        <!-- 25 Column Grid Header Numbers -->
+                        <div class="grid grid-cols-25 gap-0 text-[9px] text-center font-semibold text-emerald-800/30 mb-1 select-none colNumbers"></div>
+
+                        <!-- Main Grid System -->
+                        <div id="manuscriptGrid2" class="grid grid-cols-25 border-r border-b grid-line-emerald gap-0 bg-white shadow-sm relative"></div>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- AI Assessment Modal Dialog -->
+    <section id="aiModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto hidden">
+        <div class="bg-white rounded-2xl w-full max-w-3xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden transform scale-95 transition-transform duration-300 ease-out" id="aiModalCard">
+            <!-- Modal Header -->
+            <div class="bg-gradient-to-r from-violet-600 to-indigo-600 text-white px-6 py-4 flex justify-between items-center flex-shrink-0">
+                <div class="flex items-center space-x-2">
+                    <span class="bg-white/20 text-white rounded-full px-3 py-1 text-xs font-bold flex items-center gap-1">
+                        <i class="fa-solid fa-robot"></i> AI添削
+                    </span>
+                    <h3 class="text-lg font-bold">国語のAI先生による自動作文添削（ダブル評価）</h3>
+                </div>
+                <button id="closeAiModalBtn" class="text-white/80 hover:text-white transition p-1.5 rounded-lg hover:bg-white/10">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+
+            <!-- Tab Selectors inside Modal -->
+            <div class="flex border-b border-slate-200 bg-slate-100 p-2 space-x-2 flex-shrink-0">
+                <button id="aiTabBtn1" class="flex-1 py-2 px-4 rounded-lg font-bold text-sm bg-white text-indigo-600 shadow-sm border border-slate-200 focus:outline-none transition">
+                    テーマ 1 の添削
+                </button>
+                <button id="aiTabBtn2" class="flex-1 py-2 px-4 rounded-lg font-bold text-sm text-slate-600 hover:bg-white/50 focus:outline-none transition">
+                    テーマ 2 の添削
+                </button>
+            </div>
+
+            <!-- Modal Content Section -->
+            <div class="p-6 overflow-y-auto custom-scrollbar flex-grow bg-slate-50 space-y-4">
+                
+                <!-- Loading State (Shimmer) -->
+                <div id="aiLoading" class="space-y-4">
+                    <div class="flex items-center space-x-3 text-slate-600 bg-white p-4 rounded-xl border border-slate-200 shadow-sm animate-pulse">
+                        <i class="fa-solid fa-compass-drafting text-violet-600 text-xl animate-spin"></i>
+                        <span class="font-bold text-sm">AI先生が2つの作文を同時に添削中しています。しばらくお待ちください...</span>
+                    </div>
+                    <div class="space-y-2">
+                        <div class="h-6 w-1/4 rounded shimmer-loading"></div>
+                        <div class="h-24 w-full rounded shimmer-loading"></div>
+                        <div class="h-6 w-1/3 rounded shimmer-loading"></div>
+                        <div class="h-32 w-full rounded shimmer-loading"></div>
+                    </div>
+                </div>
+
+                <!-- Result State (Hidden during loading) -->
+                <div id="aiResults" class="space-y-5 hidden">
+                    
+                    <!-- Score stamp indicator -->
+                    <div class="flex items-center justify-between bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                        <div>
+                            <span class="text-xs font-bold text-slate-400 block">選択中テーマのAI評価</span>
+                            <span id="aiScore" class="text-xl font-black text-indigo-900">読み込み中</span>
+                        </div>
+                        <div class="h-16 w-16 bg-rose-50 border-4 border-rose-400 rounded-full flex items-center justify-center rotate-12 shadow-sm">
+                            <span class="text-[10px] font-black text-rose-500 text-center leading-3">AI先生<br>花マル</span>
+                        </div>
+                    </div>
+
+                    <!-- Good points section -->
+                    <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
+                        <h4 class="font-bold text-emerald-900 flex items-center gap-2 mb-2">
+                            <i class="fa-solid fa-circle-check text-emerald-600"></i>
+                            <span>ここがすてき！（作文のよいところ）</span>
+                        </h4>
+                        <ul id="aiGoodPoints" class="list-disc list-inside text-sm text-emerald-950 space-y-1.5 pl-1 font-medium">
+                            <!-- Injected by script -->
+                        </ul>
+                    </div>
+
+                    <!-- Advice / Fix points section -->
+                    <div class="bg-amber-50 border border-amber-200 rounded-xl p-4">
+                        <h4 class="font-bold text-amber-900 flex items-center gap-2 mb-2">
+                            <i class="fa-solid fa-pen-fancy text-amber-600"></i>
+                            <span>もっとよくなるヒント（アドバイス）</span>
+                        </h4>
+                        <ul id="aiAdvicePoints" class="list-disc list-inside text-sm text-amber-950 space-y-1.5 pl-1 font-medium">
+                            <!-- Injected by script -->
+                        </ul>
+                    </div>
+
+                    <!-- Suggest rewrite textbox -->
+                    <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+                        <div class="flex justify-between items-center mb-2 pb-2 border-b border-slate-100">
+                            <h4 class="font-bold text-slate-900 flex items-center gap-2 text-sm">
+                                <i class="fa-solid fa-graduation-cap text-violet-600"></i>
+                                <span>AI先生が書いたおすすめのリライト例</span>
+                            </h4>
+                            <button id="copyRewriteBtn" class="text-xs text-indigo-600 hover:text-indigo-800 font-bold flex items-center gap-1 transition">
+                                <i class="fa-solid fa-copy"></i>
+                                <span>リライト文章をコピーする</span>
+                            </button>
+                        </div>
+                        <p id="aiRewrittenText" class="text-sm text-slate-700 leading-relaxed bg-slate-50 p-3 rounded-lg border border-slate-100 select-all font-mono whitespace-pre-wrap">
+                            <!-- Injected by script -->
+                        </p>
+                        <div class="mt-3 flex justify-end">
+                            <button id="applyRewriteBtn" class="bg-violet-50 hover:bg-violet-100 text-violet-700 border border-violet-200 text-xs font-bold py-1.5 px-3 rounded-lg transition duration-200">
+                                この添削リライト例を作文用紙に適用する
+                            </button>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="bg-slate-50 border-t border-slate-200 px-6 py-4 flex justify-end items-center flex-shrink-0">
+                <button id="closeAiModalFooterBtn" class="bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold py-2.5 px-5 rounded-xl transition text-sm">
+                    閉じる
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Full-screen Overlay Modal for Preview & Confirming prior to PDF Generation -->
+    <section id="confirmationModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto hidden">
+        <div class="bg-white rounded-2xl w-full max-w-4xl shadow-2xl flex flex-col max-h-[95vh] overflow-hidden transform scale-95 transition-transform duration-300 ease-out my-4" id="modalCard">
+            
+            <!-- Modal Header -->
+            <div class="bg-slate-50 border-b border-slate-200 px-6 py-4 flex justify-between items-center flex-shrink-0">
+                <div class="flex items-center space-x-2">
+                    <span class="bg-emerald-100 text-emerald-800 rounded-full px-3 py-1 text-xs font-bold">確認画面</span>
+                    <h3 class="text-lg font-bold text-slate-900">作成した作文の内容確認とPDF出力</h3>
+                </div>
+                <button id="closeModalBtn" class="text-slate-400 hover:text-slate-600 transition p-1.5 rounded-lg hover:bg-slate-100">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+
+            <!-- Modal Content - Printable Draft Wrap -->
+            <div class="p-4 sm:p-6 overflow-y-auto custom-scrollbar flex-grow bg-slate-100">
+                <div class="mb-4 bg-amber-50 border border-amber-200 rounded-xl p-4 text-xs text-amber-950 flex items-start space-x-2 shadow-sm">
+                    <i class="fa-solid fa-circle-exclamation text-amber-600 mt-0.5 text-sm"></i>
+                    <div>
+                        <span class="font-bold">PDF出力の確認（2ページ構成）：</span>
+                        <p class="mt-0.5">1ページ目に「テーマ1」、2ページ目に「テーマ2」が美しく改ページされ自動出力されます。提出シート上の「巨大文字数スタンプ(空白を除く)」の数値をご確認ください。</p>
+                    </div>
+                </div>
+
+                <!-- Printable Container starts here (html2pdf wrapper) -->
+                <div id="printableArea" class="mx-auto max-w-[794px] text-slate-900">
+                    
+                    <!-- ================= PAGE 1: THEME 1 ================= -->
+                    <div class="bg-white p-10 sm:p-12 shadow-md border border-slate-200 rounded-sm mb-6 relative pdf-page-break" style="min-height: 1115px; box-sizing: border-box;">
+                        <div class="genko-yoshi">
+                            
+                            <!-- Header Grid containing HUGE characters count stamp -->
+                            <div class="flex justify-between items-start border-b-2 border-emerald-800 pb-4 mb-4">
+                                <div>
+                                    <h1 class="text-2xl font-black text-emerald-950 tracking-wider">作　文　提　出　シ　ー　ト</h1>
+                                    <div class="text-xs text-emerald-800 font-bold mt-1">【テーマ 1】 25文字 × <span class="printRowsCount1">16</span>行 設定</div>
+                                </div>
+                                <!-- HUGE CHARACTERS COUNT DISPLAY (Request-satisfied, space-excluded) -->
+                                <div class="bg-gradient-to-br from-amber-500 to-amber-600 text-white rounded-xl py-2 px-4 shadow-md text-center border-2 border-amber-300">
+                                    <span class="text-[9px] font-bold block uppercase tracking-wider text-amber-100 leading-none">テーマ1 文字数(空白除)</span>
+                                    <span class="text-3xl font-black tracking-tighter" id="printCharCount1">0</span>
+                                    <span class="text-[10px] font-bold text-amber-100"> 文字</span>
+                                </div>
+                            </div>
+
+                            <!-- Metainfo Row -->
+                            <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 mb-6 grid grid-cols-1 md:grid-cols-2 gap-3 text-xs text-slate-800">
+                                <div>
+                                    <div class="text-[10px] text-slate-500 font-bold">【作文テーマ1】</div>
+                                    <div class="text-sm font-extrabold text-emerald-950 mt-1" id="printTheme1">「未入力」</div>
+                                    <div class="text-[9px] text-emerald-800 mt-0.5 font-bold">指定文字数：<span id="printThemeRange1"></span>字</div>
+                                </div>
+                                <div class="grid grid-cols-3 gap-2 border-t md:border-t-0 md:border-l border-slate-200 pt-3 md:pt-0 md:pl-5">
+                                    <div class="col-span-1">
+                                        <span class="text-[10px] text-slate-500 block font-semibold">所属</span>
+                                        <span class="font-bold text-slate-900 printGradeClass"> </span>
+                                    </div>
+                                    <div class="col-span-1">
+                                        <span class="text-[10px] text-slate-500 block font-semibold">番号</span>
+                                        <span class="font-bold text-slate-900 printNumber"> </span>
+                                    </div>
+                                    <div class="col-span-1">
+                                        <span class="text-[10px] text-slate-500 block font-semibold">氏名</span>
+                                        <span class="font-extrabold text-slate-900 truncate printName"> </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Main Grid Section on Paper -->
+                            <div class="mb-4">
+                                <div id="printGrid1" class="grid grid-cols-25 border-r border-b border-emerald-800/40 gap-0 bg-white">
+                                    <!-- Dynamic layout via JS -->
+                                </div>
+                            </div>
+
+                            <!-- Footer -->
+                            <div class="flex justify-between items-center text-[9px] text-slate-400 mt-8 border-t border-slate-100 pt-3">
+                                <span>提出用作文シート - 1ページ目 (テーマ1)</span>
+                                <span>用紙全体のマス: <span id="printGridCount1">0</span>マス</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ================= PAGE 2: THEME 2 ================= -->
+                    <div class="bg-white p-10 sm:p-12 shadow-md border border-slate-200 rounded-sm relative" style="min-height: 1115px; box-sizing: border-box;">
+                        <div class="genko-yoshi">
+                            
+                            <!-- Header Grid containing HUGE characters count stamp -->
+                            <div class="flex justify-between items-start border-b-2 border-emerald-800 pb-4 mb-4">
+                                <div>
+                                    <h1 class="text-2xl font-black text-emerald-950 tracking-wider">作　文　提　出　シ　ー　ト</h1>
+                                    <div class="text-xs text-emerald-800 font-bold mt-1">【テーマ 2】 25文字 × <span class="printRowsCount2">16</span>行 設定</div>
+                                </div>
+                                <!-- HUGE CHARACTERS COUNT DISPLAY (Request-satisfied, space-excluded) -->
+                                <div class="bg-gradient-to-br from-emerald-600 to-emerald-700 text-white rounded-xl py-2 px-4 shadow-md text-center border-2 border-emerald-400">
+                                    <span class="text-[9px] font-bold block uppercase tracking-wider text-emerald-100 leading-none">テーマ2 文字数(空白除)</span>
+                                    <span class="text-3xl font-black tracking-tighter" id="printCharCount2">0</span>
+                                    <span class="text-[10px] font-bold text-emerald-100"> 文字</span>
+                                </div>
+                            </div>
+
+                            <!-- Metainfo Row -->
+                            <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 mb-6 grid grid-cols-1 md:grid-cols-2 gap-3 text-xs text-slate-800">
+                                <div>
+                                    <div class="text-[10px] text-slate-500 font-bold">【作文テーマ2】</div>
+                                    <div class="text-sm font-extrabold text-emerald-950 mt-1" id="printTheme2">「未入力」</div>
+                                    <div class="text-[9px] text-emerald-800 mt-0.5 font-bold">指定文字数：<span id="printThemeRange2"></span>字</div>
+                                </div>
+                                <div class="grid grid-cols-3 gap-2 border-t md:border-t-0 md:border-l border-slate-200 pt-3 md:pt-0 md:pl-5">
+                                    <div class="col-span-1">
+                                        <span class="text-[10px] text-slate-500 block font-semibold">所属</span>
+                                        <span class="font-bold text-slate-900 printGradeClass"> </span>
+                                    </div>
+                                    <div class="col-span-1">
+                                        <span class="text-[10px] text-slate-500 block font-semibold">番号</span>
+                                        <span class="font-bold text-slate-900 printNumber"> </span>
+                                    </div>
+                                    <div class="col-span-1">
+                                        <span class="text-[10px] text-slate-500 block font-semibold">氏名</span>
+                                        <span class="font-extrabold text-slate-900 truncate printName"> </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Main Grid Section on Paper -->
+                            <div class="mb-4">
+                                <div id="printGrid2" class="grid grid-cols-25 border-r border-b border-emerald-800/40 gap-0 bg-white">
+                                    <!-- Dynamic layout via JS -->
+                                </div>
+                            </div>
+
+                            <!-- Footer -->
+                            <div class="flex justify-between items-center text-[9px] text-slate-400 mt-8 border-t border-slate-100 pt-3">
+                                <span>提出用作文シート - 2ページ目 (テーマ2)</span>
+                                <span>用紙全体のマス: <span id="printGridCount2">0</span>マス</span>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- Modal Action Buttons (Footer) -->
+            <div class="bg-slate-50 border-t border-slate-200 px-6 py-4 flex justify-between items-center flex-shrink-0">
+                <button id="modalBackBtn" class="bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold py-2.5 px-5 rounded-xl transition text-sm flex items-center space-x-2">
+                    <i class="fa-solid fa-arrow-left"></i>
+                    <span>修正に戻る</span>
+                </button>
+                <button id="downloadPdfBtn" class="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-3.5 px-8 rounded-xl shadow-lg shadow-emerald-200 transition text-sm flex items-center space-x-2">
+                    <i class="fa-solid fa-file-pdf"></i>
+                    <span>2ページをまとめてPDF保存</span>
+                </button>
+            </div>
+
+        </div>
+    </section>
+
+    <!-- Custom Confirm Modal (Replacement of Standard confirm()) -->
+    <div id="confirmModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl w-full max-w-md shadow-2xl p-6 transform scale-95 transition-all duration-200 ease-out" id="confirmModalCard">
+            <h3 id="confirmModalTitle" class="text-lg font-bold text-slate-900 mb-2">確認</h3>
+            <p id="confirmModalMessage" class="text-sm text-slate-600 mb-6">本当に実行しますか？</p>
+            <div class="flex justify-end space-x-3">
+                <button id="confirmCancelBtn" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 px-4 rounded-xl text-xs transition">キャンセル</button>
+                <button id="confirmOkBtn" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-5 rounded-xl text-xs shadow-md transition">実行する</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Premium Toast notification system -->
+    <div id="toast" class="fixed bottom-6 right-6 bg-slate-900 text-white px-5 py-3 rounded-xl shadow-2xl flex items-center space-x-3 transform translate-y-20 opacity-0 transition-all duration-300 z-50 pointer-events-none">
+        <span id="toastIcon" class="text-emerald-400"><i class="fa-solid fa-circle-check"></i></span>
+        <span id="toastMessage" class="text-sm font-semibold">保存しました</span>
+    </div>
+
+    <!-- Firebase core module scripts with custom setup logic -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Global state variable
+        const state = {
+            theme1: "「将来の夢について」",
+            theme2: "「これまでに一番がんばったこと」",
+            theme1Min: 300,
+            theme1Max: 400,
+            theme2Min: 150,
+            theme2Max: 200,
+            
+            grade: "",
+            classVal: "",
+            number: "",
+            name: "",
+            
+            essayText1: "",
+            essayText2: "",
+
+            aiResultsData: null,
+            aiSelectedTab: 1
+        };
+
+        // UI DOM Reference pointers
+        const dom = {
+            configTheme1: document.getElementById('configTheme1'),
+            configTheme1Min: document.getElementById('configTheme1Min'),
+            configTheme1Max: document.getElementById('configTheme1Max'),
+            configTheme2: document.getElementById('configTheme2'),
+            configTheme2Min: document.getElementById('configTheme2Min'),
+            configTheme2Max: document.getElementById('configTheme2Max'),
+            saveConfigBtn: document.getElementById('saveConfigBtn'),
+            
+            studentGrade: document.getElementById('studentGrade'),
+            studentClass: document.getElementById('studentClass'),
+            studentNumber: document.getElementById('studentNumber'),
+            studentName: document.getElementById('studentName'),
+            
+            hiddenEssayTextarea1: document.getElementById('hiddenEssayTextarea1'),
+            hiddenEssayTextarea2: document.getElementById('hiddenEssayTextarea2'),
+            zenkakuConvertBtn: document.getElementById('zenkakuConvertBtn'),
+            
+            theme1TitleLabel: document.getElementById('theme1TitleLabel'),
+            theme2TitleLabel: document.getElementById('theme2TitleLabel'),
+
+            currentCount1: document.getElementById('currentCount1'),
+            targetCount1: document.getElementById('targetCount1'),
+            remainingText1: document.getElementById('remainingText1'),
+            progressBar1: document.getElementById('progressBar1'),
+
+            currentCount2: document.getElementById('currentCount2'),
+            targetCount2: document.getElementById('targetCount2'),
+            remainingText2: document.getElementById('remainingText2'),
+            progressBar2: document.getElementById('progressBar2'),
+            
+            clearBtn: document.getElementById('clearBtn'),
+            confirmBtn: document.getElementById('confirmBtn'),
+            
+            toggleSettingsBtn: document.getElementById('toggleSettingsBtn'),
+            closeSettingsBtn: document.getElementById('closeSettingsBtn'),
+            settingsPanel: document.getElementById('settingsPanel'),
+            
+            manuscriptGrid1: document.getElementById('manuscriptGrid1'),
+            manuscriptGrid2: document.getElementById('manuscriptGrid2'),
+            
+            confirmationModal: document.getElementById('confirmationModal'),
+            modalCard: document.getElementById('modalCard'),
+            closeModalBtn: document.getElementById('closeModalBtn'),
+            modalBackBtn: document.getElementById('modalBackBtn'),
+            downloadPdfBtn: document.getElementById('downloadPdfBtn'),
+            printableArea: document.getElementById('printableArea'),
+            
+            printTheme1: document.getElementById('printTheme1'),
+            printThemeRange1: document.getElementById('printThemeRange1'),
+            printTheme2: document.getElementById('printTheme2'),
+            printThemeRange2: document.getElementById('printThemeRange2'),
+            printGrid1: document.getElementById('printGrid1'),
+            printGrid2: document.getElementById('printGrid2'),
+            printCharCount1: document.getElementById('printCharCount1'),
+            printCharCount2: document.getElementById('printCharCount2'),
+            printGridCount1: document.getElementById('printGridCount1'),
+            printGridCount2: document.getElementById('printGridCount2'),
+            
+            toast: document.getElementById('toast'),
+            toastIcon: document.getElementById('toastIcon'),
+            toastMessage: document.getElementById('toastMessage'),
+
+            aiAssessBtn: document.getElementById('aiAssessBtn'),
+            aiModal: document.getElementById('aiModal'),
+            aiModalCard: document.getElementById('aiModalCard'),
+            closeAiModalBtn: document.getElementById('closeAiModalBtn'),
+            closeAiModalFooterBtn: document.getElementById('closeAiModalFooterBtn'),
+            aiLoading: document.getElementById('aiLoading'),
+            aiResults: document.getElementById('aiResults'),
+            aiScore: document.getElementById('aiScore'),
+            aiGoodPoints: document.getElementById('aiGoodPoints'),
+            aiAdvicePoints: document.getElementById('aiAdvicePoints'),
+            aiRewrittenText: document.getElementById('aiRewrittenText'),
+            copyRewriteBtn: document.getElementById('copyRewriteBtn'),
+            applyRewriteBtn: document.getElementById('applyRewriteBtn'),
+            aiTabBtn1: document.getElementById('aiTabBtn1'),
+            aiTabBtn2: document.getElementById('aiTabBtn2'),
+
+            // Save elements
+            saveStatus: document.getElementById('saveStatus'),
+            manualSaveBtn: document.getElementById('manualSaveBtn'),
+            manualLoadBtn: document.getElementById('manualLoadBtn'),
+
+            // Custom Confirm modal elements
+            confirmModal: document.getElementById('confirmModal'),
+            confirmModalCard: document.getElementById('confirmModalCard'),
+            confirmModalTitle: document.getElementById('confirmModalTitle'),
+            confirmModalMessage: document.getElementById('confirmModalMessage'),
+            confirmCancelBtn: document.getElementById('confirmCancelBtn'),
+            confirmOkBtn: document.getElementById('confirmOkBtn')
+        };
+
+        // CSS style injection for 25 columns
+        const styleSheet = document.createElement("style");
+        styleSheet.innerText = `
+            .grid-cols-25 {
+                grid-template-columns: repeat(25, minmax(0, 1fr));
+            }
+        `;
+        document.head.appendChild(styleSheet);
+
+        // Firestore configuration state
+        let db = null;
+        let auth = null;
+        let userId = null;
+        let appId = 'default-app-id';
+        let isFirebaseActive = false;
+        let autoSaveTimer = null;
+
+        // Setup Cloud Firestore database client session connection
+        async function initializeFirebase() {
+            try {
+                // Get globally injected attributes safely
+                appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+                
+                if (typeof __firebase_config !== 'undefined' && __firebase_config) {
+                    const firebaseConfig = JSON.parse(__firebase_config);
+                    const app = initializeApp(firebaseConfig);
+                    db = getFirestore(app);
+                    auth = getAuth(app);
+
+                    // Sign-in processing
+                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                        await signInWithCustomToken(auth, __initial_auth_token);
+                    } else {
+                        await signInAnonymously(auth);
+                    }
+
+                    userId = auth.currentUser?.uid || crypto.randomUUID();
+                    isFirebaseActive = true;
+                    updateSaveStatus('cloud-idle');
+
+                    // Automatically restore data on load
+                    await loadSavedData();
+                } else {
+                    throw new Error("No config available");
+                }
+            } catch (err) {
+                console.warn("Firebase not active or local environment. Falling back to localStorage: ", err);
+                isFirebaseActive = false;
+                userId = 'local-user';
+                updateSaveStatus('local-active');
+                
+                // Load local copy
+                loadFromLocalStorage();
+            }
+        }
+
+        // Helper to count characters excluding spaces (all forms of spaces & newlines)
+        function getCharCount(text) {
+            if (!text) return 0;
+            return text.replace(/[\s　\n\r]/g, '').length;
+        }
+
+        // Helper to handle custom confirm modals asynchronously
+        function showCustomConfirm(title, message, onConfirm) {
+            dom.confirmModalTitle.textContent = title;
+            dom.confirmModalMessage.textContent = message;
+            dom.confirmModal.classList.remove('hidden');
+            setTimeout(() => {
+                dom.confirmModalCard.classList.remove('scale-95');
+                dom.confirmModalCard.classList.add('scale-100');
+            }, 10);
+
+            const closeConfirm = () => {
+                dom.confirmModalCard.classList.remove('scale-100');
+                dom.confirmModalCard.classList.add('scale-95');
+                setTimeout(() => {
+                    dom.confirmModal.classList.add('hidden');
+                }, 150);
+                dom.confirmOkBtn.onclick = null;
+                dom.confirmCancelBtn.onclick = null;
+            };
+
+            dom.confirmOkBtn.onclick = () => {
+                closeConfirm();
+                onConfirm();
+            };
+
+            dom.confirmCancelBtn.onclick = () => {
+                closeConfirm();
+            };
+        }
+
+        // Helper to update status indicators elegantly
+        function updateSaveStatus(type, extraTime = '') {
+            if (!dom.saveStatus) return;
+            switch(type) {
+                case 'cloud-idle':
+                    dom.saveStatus.innerHTML = '<i class="fa-solid fa-cloud-arrow-up text-emerald-500"></i> クラウド同期中';
+                    dom.saveStatus.className = "font-bold text-emerald-600 flex items-center gap-1";
+                    break;
+                case 'saving':
+                    dom.saveStatus.innerHTML = '<i class="fa-solid fa-arrows-spin animate-spin text-indigo-500"></i> 一時保存中...';
+                    dom.saveStatus.className = "font-bold text-indigo-600 flex items-center gap-1";
+                    break;
+                case 'saved':
+                    dom.saveStatus.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-600"></i> 保存完了 (${extraTime})`;
+                    dom.saveStatus.className = "font-bold text-emerald-600 flex items-center gap-1";
+                    break;
+                case 'error':
+                    dom.saveStatus.innerHTML = '<i class="fa-solid fa-triangle-exclamation text-amber-500"></i> 保存エラー';
+                    dom.saveStatus.className = "font-bold text-amber-600 flex items-center gap-1";
+                    break;
+                case 'local-active':
+                    dom.saveStatus.innerHTML = '<i class="fa-solid fa-hard-drive text-amber-600"></i> ローカル一時保存中';
+                    dom.saveStatus.className = "font-bold text-amber-700 flex items-center gap-1";
+                    break;
+                case 'restored':
+                    dom.saveStatus.innerHTML = '<i class="fa-solid fa-clock-rotate-left text-emerald-600"></i> 作文を復元しました';
+                    dom.saveStatus.className = "font-bold text-emerald-600 flex items-center gap-1";
+                    break;
+            }
+        }
+
+        // Standard payload construction
+        function getSavePayload() {
+            return {
+                grade: state.grade || "",
+                classVal: state.classVal || "",
+                number: state.number || "",
+                name: state.name || "",
+                theme1: state.theme1,
+                theme2: state.theme2,
+                theme1Min: state.theme1Min,
+                theme1Max: state.theme1Max,
+                theme2Min: state.theme2Min,
+                theme2Max: state.theme2Max,
+                essayText1: state.essayText1 || "",
+                essayText2: state.essayText2 || "",
+                updatedAt: new Date().toISOString()
+            };
+        }
+
+        // Manual or Automatic Save to Firestore (Rule 1 Strict Path Compliant)
+        async function saveData() {
+            updateSaveStatus('saving');
+            const payload = getSavePayload();
+
+            // Always fallback to localStorage first as a secondary backup
+            localStorage.setItem('composition_draft', JSON.stringify(payload));
+
+            if (isFirebaseActive && db && userId) {
+                try {
+                    // Strict Path rule: /artifacts/{appId}/users/{userId}/{collectionName}/{documentId}
+                    const saveDocRef = doc(db, 'artifacts', appId, 'users', userId, 'saves', 'draft');
+                    await setDoc(saveDocRef, payload, { merge: true });
+                    
+                    const now = new Date();
+                    const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+                    updateSaveStatus('saved', timeStr);
+                } catch (err) {
+                    console.error("Firestore Save failed: ", err);
+                    updateSaveStatus('error');
+                }
+            } else {
+                // If strictly in local mode
+                updateSaveStatus('local-active');
+            }
+        }
+
+        // Automatic debouncer to save only after 2s of quietness
+        function triggerAutoSave() {
+            if (autoSaveTimer) clearTimeout(autoSaveTimer);
+            updateSaveStatus('saving');
+            autoSaveTimer = setTimeout(() => {
+                saveData();
+            }, 2000);
+        }
+
+        // Restore from Firestore Document
+        async function loadSavedData() {
+            if (isFirebaseActive && db && userId) {
+                try {
+                    const saveDocRef = doc(db, 'artifacts', appId, 'users', userId, 'saves', 'draft');
+                    const snapshot = await getDoc(saveDocRef);
+                    if (snapshot.exists()) {
+                        const data = snapshot.data();
+                        applyLoadedData(data);
+                        updateSaveStatus('restored');
+                        showToast('前回の作成データをクラウドから復元しました！');
+                        return;
+                    }
+                } catch (err) {
+                    console.error("Firestore loading error: ", err);
+                }
+            }
+            // Fallback load if cloud not found or inactive
+            loadFromLocalStorage();
+        }
+
+        function loadFromLocalStorage() {
+            const localCopy = localStorage.getItem('composition_draft');
+            if (localCopy) {
+                try {
+                    const data = JSON.parse(localCopy);
+                    applyLoadedData(data);
+                    updateSaveStatus('restored');
+                    showToast('保存されていたデータを復元しました。');
+                } catch (err) {
+                    console.error("Local restore parse error: ", err);
+                }
+            } else {
+                showToast('保存されている一時データが見つかりませんでした。', 'error');
+            }
+        }
+
+        // Assign recovered fields back to inputs & view models
+        function applyLoadedData(data) {
+            state.grade = data.grade || "";
+            state.classVal = data.classVal || "";
+            state.number = data.number || "";
+            state.name = data.name || "";
+            state.theme1 = data.theme1 || "「将来の夢について」";
+            state.theme2 = data.theme2 || "「これまでに一番がんばったこと」";
+            state.theme1Min = data.theme1Min ?? 300;
+            state.theme1Max = data.theme1Max ?? 400;
+            state.theme2Min = data.theme2Min ?? 150;
+            state.theme2Max = data.theme2Max ?? 200;
+            state.essayText1 = data.essayText1 || "";
+            state.essayText2 = data.essayText2 || "";
+
+            // Synchronize UI elements
+            dom.studentGrade.value = state.grade;
+            dom.studentClass.value = state.classVal;
+            dom.studentNumber.value = state.number;
+            dom.studentName.value = state.name;
+            
+            dom.configTheme1.value = state.theme1;
+            dom.configTheme1Min.value = state.theme1Min;
+            dom.configTheme1Max.value = state.theme1Max;
+            dom.configTheme2.value = state.theme2;
+            dom.configTheme2Min.value = state.theme2Min;
+            dom.configTheme2Max.value = state.theme2Max;
+
+            dom.hiddenEssayTextarea1.value = state.essayText1;
+            dom.hiddenEssayTextarea2.value = state.essayText2;
+
+            renderManuscripts();
+        }
+
+        // Toast notifications
+        function showToast(message, type = 'success') {
+            dom.toastMessage.textContent = message;
+            if (type === 'success') {
+                dom.toastIcon.innerHTML = '<i class="fa-solid fa-circle-check"></i>';
+                dom.toastIcon.className = 'text-emerald-400';
+            } else if (type === 'error') {
+                dom.toastIcon.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i>';
+                dom.toastIcon.className = 'text-amber-500';
+            }
+            
+            dom.toast.classList.remove('translate-y-20', 'opacity-0');
+            dom.toast.classList.add('translate-y-0', 'opacity-100');
+            
+            setTimeout(() => {
+                dom.toast.classList.add('translate-y-20', 'opacity-0');
+                dom.toast.classList.remove('translate-y-0', 'opacity-100');
+            }, 3000);
+        }
+
+        // Helper: Convert Half-width letters to full-width
+        function convertHalfToFull(str) {
+            return str.replace(/[!-~]/g, function(s) {
+                return String.fromCharCode(s.charCodeAt(0) + 0xFEE0);
+            }).replace(/ /g, '　');
+        }
+
+        // Structure text blocks precisely in 25 columns layout
+        function getGenkoYoshiStructure(text, maxLimit) {
+            const cols = 25;
+            const minRows = Math.max(Math.ceil(maxLimit / cols), 16);
+            
+            let cells = [];
+            let paragraphs = text.split('\n');
+            let textPointer = 0;
+
+            paragraphs.forEach((p, pIdx) => {
+                if (p.length === 0 && pIdx < paragraphs.length - 1) {
+                    for (let c = 0; c < cols; c++) {
+                        cells.push({ char: '', sourceIndex: textPointer, isRealNewline: false });
+                    }
+                    textPointer += 1;
+                    return;
+                }
+
+                for (let i = 0; i < p.length; i++) {
+                    cells.push({ char: p[i], sourceIndex: textPointer + i, isRealNewline: false });
+                }
+
+                textPointer += p.length;
+
+                const nextRowOffset = cells.length % cols;
+                if (nextRowOffset !== 0 && pIdx < paragraphs.length - 1) {
+                    const remainingBlanks = cols - nextRowOffset;
+                    for (let b = 0; b < remainingBlanks; b++) {
+                        cells.push({ char: '', sourceIndex: textPointer, isRealNewline: true });
+                    }
+                }
+                
+                if (pIdx < paragraphs.length - 1) {
+                    textPointer += 1;
+                }
+            });
+
+            const minCapacity = minRows * cols;
+            while (cells.length < minCapacity) {
+                cells.push({ char: '', sourceIndex: null, isRealNewline: false });
+            }
+
+            return {
+                cells: cells,
+                rowsCount: Math.ceil(cells.length / cols)
+            };
+        }
+
+        // Render main manuscript cells and metrics
+        function renderManuscripts() {
+            // Meta-indicators alignment
+            document.querySelectorAll('.previewGrade').forEach(el => el.textContent = state.grade || ' 　 ');
+            document.querySelectorAll('.previewClass').forEach(el => el.textContent = state.classVal || ' 　 ');
+            document.querySelectorAll('.previewNumber').forEach(el => el.textContent = state.number || ' 　 ');
+            document.querySelectorAll('.previewName').forEach(el => el.textContent = state.name || '未入力');
+
+            // Render Theme 1 Grid
+            dom.theme1TitleLabel.textContent = state.theme1;
+            dom.targetCount1.textContent = `${state.theme1Min}〜${state.theme1Max}`;
+            const struct1 = getGenkoYoshiStructure(state.essayText1, state.theme1Max);
+            renderPaperGrid(dom.manuscriptGrid1, struct1, state.essayText1, state.theme1Min, state.theme1Max, dom.hiddenEssayTextarea1, 1);
+
+            // Render Theme 2 Grid
+            dom.theme2TitleLabel.textContent = state.theme2;
+            dom.targetCount2.textContent = `${state.theme2Min}〜${state.theme2Max}`;
+            const struct2 = getGenkoYoshiStructure(state.essayText2, state.theme2Max);
+            renderPaperGrid(dom.manuscriptGrid2, struct2, state.essayText2, state.theme2Min, state.theme2Max, dom.hiddenEssayTextarea2, 2);
+
+            // Live counters update (Excluding spaces/newlines for count, keeping grid render intact)
+            updateStats(getCharCount(state.essayText1), state.theme1Min, state.theme1Max, dom.currentCount1, dom.remainingText1, dom.progressBar1);
+            updateStats(getCharCount(state.essayText2), state.theme2Min, state.theme2Max, dom.currentCount2, dom.remainingText2, dom.progressBar2);
+        }
+
+        function renderPaperGrid(gridContainer, struct, sourceText, min, max, targetTextarea, themeNo) {
+            gridContainer.innerHTML = '';
+            
+            const caretPos = targetTextarea.selectionStart;
+            const isFocused = document.activeElement === targetTextarea;
+
+            struct.cells.forEach((cellData, index) => {
+                const cell = document.createElement('div');
+                cell.className = "grid-cell border-l border-t grid-line-emerald text-emerald-950 cell-hover";
+                cell.setAttribute('data-index', index);
+                
+                if (cellData.char) {
+                    cell.textContent = cellData.char;
+                }
+
+                // Range coloring boundaries (Based on actual cell render sequence for visual layout)
+                if (index >= max) {
+                    if (cellData.char) {
+                        cell.classList.add('bg-rose-50', 'text-rose-700', 'border-rose-200');
+                    } else {
+                        cell.classList.add('bg-rose-50/20');
+                    }
+                } else if (cellData.char) {
+                    if (index >= min) {
+                        cell.classList.add('bg-emerald-50/30');
+                    } else {
+                        cell.classList.add('bg-amber-50/20');
+                    }
+                }
+
+                // Focusing custom virtual caret indicators
+                if (isFocused) {
+                    let hasCaret = false;
+                    if (cellData.sourceIndex !== null && cellData.sourceIndex === caretPos) {
+                        hasCaret = true;
+                    } else if (cellData.sourceIndex === null && index === sourceText.length) {
+                        const prevCell = struct.cells[index - 1];
+                        if (!prevCell || prevCell.char !== '' || prevCell.sourceIndex !== null) {
+                            hasCaret = true;
+                        }
+                    }
+
+                    if (hasCaret) {
+                        const caretSpan = document.createElement('span');
+                        caretSpan.className = "virtual-caret";
+                        cell.appendChild(caretSpan);
+                        cell.classList.add('cell-focused');
+                    }
+                }
+
+                // Periodic count labels inside paper grid
+                if (index > 0 && (index + 1) % 100 === 0) {
+                    const label = document.createElement('span');
+                    label.className = "absolute bottom-0 right-0.5 text-[8px] text-emerald-700/40 select-none pointer-events-none font-bold";
+                    label.textContent = index + 1;
+                    cell.appendChild(label);
+                }
+
+                // Click event handles typing redirect
+                cell.addEventListener('mousedown', (e) => {
+                    e.preventDefault();
+                    targetTextarea.focus();
+
+                    if (cellData.sourceIndex !== null) {
+                        targetTextarea.setSelectionRange(cellData.sourceIndex, cellData.sourceIndex);
+                    } else {
+                        const endLen = sourceText.length;
+                        targetTextarea.setSelectionRange(endLen, endLen);
+                    }
+                    renderManuscripts();
+                });
+
+                gridContainer.appendChild(cell);
+            });
+        }
+
+        function updateStats(count, min, max, countEl, remainingEl, progressEl) {
+            countEl.textContent = count;
+            
+            if (count < min) {
+                const remaining = min - count;
+                remainingEl.innerHTML = `あと ${remaining} 字`;
+                remainingEl.className = "ml-2 px-2 py-0.5 bg-amber-100 text-amber-800 rounded font-bold text-[11px]";
+                
+                const percent = Math.min((count / min) * 100, 100);
+                progressEl.style.width = `${percent}%`;
+                progressEl.className = "bg-gradient-to-r from-amber-400 to-orange-400 h-full transition-all duration-300";
+            } else if (count <= max) {
+                const safeRemaining = max - count;
+                remainingEl.innerHTML = `範囲内 (上限まで ${safeRemaining}字)`;
+                remainingEl.className = "ml-2 px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded font-bold text-[11px]";
+                
+                progressEl.style.width = `100%`;
+                progressEl.className = "bg-emerald-500 h-full transition-all duration-300";
+            } else {
+                const exceeded = count - max;
+                remainingEl.innerHTML = `${exceeded}字 超過`;
+                remainingEl.className = "ml-2 px-2 py-0.5 bg-rose-100 text-rose-800 rounded font-bold text-[11px] animate-pulse";
+                
+                progressEl.style.width = `100%`;
+                progressEl.className = "bg-rose-500 h-full transition-all duration-300";
+            }
+        }
+
+        function renderPrintArea() {
+            // Setup metainfo
+            document.querySelectorAll('.printGradeClass').forEach(el => {
+                el.textContent = `${state.grade || ' 　 '}年 ${state.classVal || ' 　 '}組`;
+            });
+            document.querySelectorAll('.printNumber').forEach(el => {
+                el.textContent = state.number ? `${state.number} 番` : ' 　 番';
+            });
+            document.querySelectorAll('.printName').forEach(el => {
+                el.textContent = state.name || '未入力';
+            });
+
+            // Page 1 Setup (Theme 1)
+            dom.printTheme1.textContent = state.theme1;
+            dom.printThemeRange1.textContent = `${state.theme1Min}〜${state.theme1Max}`;
+            dom.printCharCount1.textContent = getCharCount(state.essayText1);
+            const struct1 = getGenkoYoshiStructure(state.essayText1, state.theme1Max);
+            document.querySelectorAll('.printRowsCount1').forEach(el => el.textContent = struct1.rowsCount);
+            renderPrintGrid(dom.printGrid1, struct1);
+            dom.printGridCount1.textContent = struct1.cells.filter(c => c.char !== '').length;
+
+            // Page 2 Setup (Theme 2)
+            dom.printTheme2.textContent = state.theme2;
+            dom.printThemeRange2.textContent = `${state.theme2Min}〜${state.theme2Max}`;
+            dom.printCharCount2.textContent = getCharCount(state.essayText2);
+            const struct2 = getGenkoYoshiStructure(state.essayText2, state.theme2Max);
+            document.querySelectorAll('.printRowsCount2').forEach(el => el.textContent = struct2.rowsCount);
+            renderPrintGrid(dom.printGrid2, struct2);
+            dom.printGridCount2.textContent = struct2.cells.filter(c => c.char !== '').length;
+        }
+
+        function renderPrintGrid(gridContainer, struct) {
+            gridContainer.innerHTML = '';
+            struct.cells.forEach((cellData, index) => {
+                const cell = document.createElement('div');
+                cell.className = "grid-cell border-l border-t border-emerald-800/30 text-slate-900 bg-white";
+                
+                if (cellData.char) {
+                    cell.textContent = cellData.char;
+                }
+
+                if (index > 0 && (index + 1) % 50 === 0) {
+                    const hint = document.createElement('span');
+                    hint.className = "absolute bottom-0.5 right-0.5 text-[7px] text-slate-300 pointer-events-none font-bold";
+                    hint.textContent = index + 1;
+                    cell.appendChild(hint);
+                }
+
+                gridContainer.appendChild(cell);
+            });
+        }
+
+        async function runAiAssessment() {
+            if (!state.essayText1.trim() && !state.essayText2.trim()) {
+                showToast('テーマ1・テーマ2どちらの原稿用紙にも作文が入力されていません。', 'error');
+                return;
+            }
+
+            dom.aiLoading.classList.remove('hidden');
+            dom.aiResults.classList.add('hidden');
+            dom.aiModal.classList.remove('hidden');
+            dom.applyRewriteBtn.classList.add('hidden');
+
+            setTimeout(() => {
+                dom.aiModalCard.classList.remove('scale-95');
+                dom.aiModalCard.classList.add('scale-100');
+            }, 50);
+
+            const activeGrade = state.grade || "一般的な学年";
+
+            const systemPrompt = `あなたは優しく丁寧な国語の先生です。
+児童・生徒が同時に書いた2つの異なるテーマ（テーマ1、テーマ2）の作文を分析して、アドバイスを生成してください。
+現在指定されている学年（${activeGrade}）に適した優しい表現、正しい日本語、分かりやすい構成になるよう添削してください。
+
+それぞれのテーマについて、設定されている文字数範囲（空白を除く実文字数）に合致しているかも文字数指導の視点から評価に反映してください。
+
+出力は必ず以下のJSONフォーマットに厳密に従ってください。
+{
+  "theme1": {
+    "score": "評価を「たいへんよくできました」「もうすこし」「がんばろう」のいずれか1つで記述（文字数の適合も含めてください）",
+    "goodPoints": ["テーマ1の良い点・素敵な表現（2〜3個）"],
+    "advicePoints": ["テーマ1の改善アドバイス、誤りの指摘（2〜3個）"],
+    "rewrittenText": "元の良い部分を残しつつ、指定範囲内（${state.theme1Min}〜${state.theme1Max}字）に収まるよう書き換えたお勧めリライト例（25文字固定用紙に沿うよう、自然な改行を含めてください）"
+  },
+  "theme2": {
+    "score": "評価を「たいへんよくできました」「もうすこし」「がんばろう」のいずれか1つで記述（文字数の適合も含めてください）",
+    "goodPoints": ["テーマ2の良い点・素敵な表現（2〜3個）"],
+    "advicePoints": ["テーマ2の改善アドバイス、誤りの指摘（2〜3個）"],
+    "rewrittenText": "元の良い部分を残しつつ、指定範囲内（${state.theme2Min}〜${state.theme2Max}字）に収まるよう書き換えたお勧めリライト例（25文字固定用紙に沿うよう、自然な改行を含めてください）"
+  }
+}`;
+
+            const userQuery = `
+学年設定: ${activeGrade}
+
+【テーマ1】「${state.theme1}」 （指定範囲：${state.theme1Min}〜${state.theme1Max}字）
+実際の入力（空白を除く：${getCharCount(state.essayText1)}字）：
+${state.essayText1 || '（未入力です）'}
+
+【テーマ2】「${state.theme2}」 （指定範囲：${state.theme2Min}〜${state.theme2Max}字）
+実際の入力（空白を除く：${getCharCount(state.essayText2)}字）：
+${state.essayText2 || '（未入力です）'}
+`;
+
+            const apiKey = "";
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+
+            const payload = {
+                contents: [{ parts: [{ text: userQuery }] }],
+                generationConfig: {
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: "OBJECT",
+                        properties: {
+                            "theme1": {
+                                "type": "OBJECT",
+                                "properties": {
+                                    "score": { "type": "STRING" },
+                                    "goodPoints": { "type": "ARRAY", "items": { "type": "STRING" } },
+                                    "advicePoints": { "type": "ARRAY", "items": { "type": "STRING" } },
+                                    "rewrittenText": { "type": "STRING" }
+                                },
+                                "required": ["score", "goodPoints", "advicePoints", "rewrittenText"]
+                            },
+                            "theme2": {
+                                "type": "OBJECT",
+                                "properties": {
+                                    "score": { "type": "STRING" },
+                                    "goodPoints": { "type": "ARRAY", "items": { "type": "STRING" } },
+                                    "advicePoints": { "type": "ARRAY", "items": { "type": "STRING" } },
+                                    "rewrittenText": { "type": "STRING" }
+                                },
+                                "required": ["score", "goodPoints", "advicePoints", "rewrittenText"]
+                            }
+                        },
+                        "required": ["theme1", "theme2"]
+                    }
+                },
+                systemInstruction: {
+                    parts: [{ text: systemPrompt }]
+                }
+            };
+
+            let delay = 1000;
+            let success = false;
+            let resultJson = null;
+
+            for (let attempt = 0; attempt < 3; attempt++) {
+                try {
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) throw new Error();
+
+                    const result = await response.json();
+                    const candidateText = result.candidates?.[0]?.content?.parts?.[0]?.text;
+                    if (candidateText) {
+                        resultJson = JSON.parse(candidateText);
+                        success = true;
+                        break;
+                    }
+                } catch (err) {
+                    await new Promise(res => setTimeout(res, delay));
+                    delay *= 2;
+                }
+            }
+
+            if (!success || !resultJson) {
+                showToast('AIによる作文添削処理に失敗しました。少し時間をおいて再度実行してください。', 'error');
+                closeAiModal();
+                return;
+            }
+
+            state.aiResultsData = resultJson;
+            state.aiSelectedTab = 1;
+
+            dom.aiLoading.classList.add('hidden');
+            dom.aiResults.classList.remove('hidden');
+            dom.applyRewriteBtn.classList.remove('hidden');
+            
+            updateAiTabUI();
+            renderSelectedAiResult();
+            showToast('AI先生の添削が完了しました！タブでお題を切り替えて読めます。');
+        }
+
+        function renderSelectedAiResult() {
+            if (!state.aiResultsData) return;
+            
+            const selectedData = state.aiSelectedTab === 1 ? state.aiResultsData.theme1 : state.aiResultsData.theme2;
+
+            dom.aiScore.textContent = selectedData.score || "よく書けました";
+            
+            dom.aiGoodPoints.innerHTML = '';
+            (selectedData.goodPoints || []).forEach(pt => {
+                const li = document.createElement('li');
+                li.textContent = pt;
+                dom.aiGoodPoints.appendChild(li);
+            });
+
+            dom.aiAdvicePoints.innerHTML = '';
+            (selectedData.advicePoints || []).forEach(pt => {
+                const li = document.createElement('li');
+                li.textContent = pt;
+                dom.aiAdvicePoints.appendChild(li);
+            });
+
+            dom.aiRewrittenText.textContent = selectedData.rewrittenText || '';
+        }
+
+        function updateAiTabUI() {
+            if (state.aiSelectedTab === 1) {
+                dom.aiTabBtn1.className = "flex-1 py-2 px-4 rounded-lg font-bold text-sm bg-indigo-600 text-white shadow-sm border border-indigo-700 focus:outline-none transition";
+                dom.aiTabBtn2.className = "flex-1 py-2 px-4 rounded-lg font-bold text-sm text-slate-600 hover:bg-white/50 focus:outline-none transition";
+            } else {
+                dom.aiTabBtn2.className = "flex-1 py-2 px-4 rounded-lg font-bold text-sm bg-emerald-600 text-white shadow-sm border border-emerald-700 focus:outline-none transition";
+                dom.aiTabBtn1.className = "flex-1 py-2 px-4 rounded-lg font-bold text-sm text-slate-600 hover:bg-white/50 focus:outline-none transition";
+            }
+        }
+
+        function closeAiModal() {
+            dom.aiModalCard.classList.remove('scale-100');
+            dom.aiModalCard.classList.add('scale-95');
+            setTimeout(() => {
+                dom.aiModal.classList.add('hidden');
+            }, 150);
+        }
+
+        function initializeEvents() {
+            
+            // Connect native hidden textareas for typing
+            dom.hiddenEssayTextarea1.addEventListener('input', () => {
+                state.essayText1 = dom.hiddenEssayTextarea1.value;
+                renderManuscripts();
+                triggerAutoSave();
+            });
+            dom.hiddenEssayTextarea2.addEventListener('input', () => {
+                state.essayText2 = dom.hiddenEssayTextarea2.value;
+                renderManuscripts();
+                triggerAutoSave();
+            });
+
+            // Focus synchronization across cursor changes
+            ['keyup', 'click', 'focus', 'blur', 'selectionchange'].forEach(event => {
+                dom.hiddenEssayTextarea1.addEventListener(event, () => renderManuscripts());
+                dom.hiddenEssayTextarea2.addEventListener(event, () => renderManuscripts());
+            });
+
+            // Dynamic 25 Column layout counts initial alignment
+            document.querySelectorAll('.colNumbers').forEach(container => {
+                container.innerHTML = '';
+                for (let i = 1; i <= 25; i++) {
+                    const span = document.createElement('span');
+                    span.textContent = i;
+                    container.appendChild(span);
+                }
+            });
+
+            // Student profile synchronization
+            [dom.studentGrade, dom.studentClass, dom.studentNumber, dom.studentName].forEach(el => {
+                el.addEventListener('input', () => {
+                    state.grade = dom.studentGrade.value;
+                    state.classVal = dom.studentClass.value;
+                    state.number = dom.studentNumber.value;
+                    state.name = dom.studentName.value;
+                    renderManuscripts();
+                    triggerAutoSave();
+                });
+            });
+
+            // Manual Save and Manual Load action click listeners (Upgraded to custom confirm modal)
+            dom.manualSaveBtn.addEventListener('click', async () => {
+                await saveData();
+                showToast('現在の内容を一時保存しました！');
+            });
+
+            dom.manualLoadBtn.addEventListener('click', () => {
+                showCustomConfirm(
+                    '保存データの復元確認',
+                    '最後に保存した作文データを呼び出して復元しますか？（現在入力中のテキストは上書きされます）',
+                    async () => {
+                        await loadSavedData();
+                    }
+                );
+            });
+
+            // Settings Configuration Actions
+            dom.toggleSettingsBtn.addEventListener('click', () => dom.settingsPanel.classList.toggle('hidden'));
+            dom.closeSettingsBtn.addEventListener('click', () => dom.settingsPanel.classList.add('hidden'));
+
+            dom.saveConfigBtn.addEventListener('click', () => {
+                const min1 = parseInt(dom.configTheme1Min.value, 10);
+                const max1 = parseInt(dom.configTheme1Max.value, 10);
+                const min2 = parseInt(dom.configTheme2Min.value, 10);
+                const max2 = parseInt(dom.configTheme2Max.value, 10);
+
+                if (isNaN(min1) || min1 < 0 || isNaN(max1) || max1 < min1 || 
+                    isNaN(min2) || min2 < 0 || isNaN(max2) || max2 < min2) {
+                    showToast('有効な文字数範囲を設定してください。', 'error');
+                    return;
+                }
+
+                state.theme1 = dom.configTheme1.value;
+                state.theme1Min = min1;
+                state.theme1Max = max1;
+                state.theme2 = dom.configTheme2.value;
+                state.theme2Min = min2;
+                state.theme2Max = max2;
+
+                dom.settingsPanel.classList.add('hidden');
+                renderManuscripts();
+                triggerAutoSave();
+                showToast('お題と文字数範囲を反映しました！');
+            });
+
+            // Clean zenkaku converter
+            dom.zenkakuConvertBtn.addEventListener('click', () => {
+                let changed = false;
+                if (dom.hiddenEssayTextarea1.value) {
+                    const f1 = convertHalfToFull(dom.hiddenEssayTextarea1.value);
+                    dom.hiddenEssayTextarea1.value = f1;
+                    state.essayText1 = f1;
+                    changed = true;
+                }
+                if (dom.hiddenEssayTextarea2.value) {
+                    const f2 = convertHalfToFull(dom.hiddenEssayTextarea2.value);
+                    dom.hiddenEssayTextarea2.value = f2;
+                    state.essayText2 = f2;
+                    changed = true;
+                }
+
+                if (changed) {
+                    renderManuscripts();
+                    triggerAutoSave();
+                    showToast('作文用紙内のすべての半角文字を全角へ変換しました！');
+                } else {
+                    showToast('作文がまだ入力されていません。', 'error');
+                }
+            });
+
+            // AI Action Events
+            dom.aiTabBtn1.addEventListener('click', () => {
+                state.aiSelectedTab = 1;
+                updateAiTabUI();
+                renderSelectedAiResult();
+            });
+            dom.aiTabBtn2.addEventListener('click', () => {
+                state.aiSelectedTab = 2;
+                updateAiTabUI();
+                renderSelectedAiResult();
+            });
+
+            dom.aiAssessBtn.addEventListener('click', runAiAssessment);
+            dom.closeAiModalBtn.addEventListener('click', closeAiModal);
+            dom.closeAiModalFooterBtn.addEventListener('click', closeAiModal);
+
+            // Suggested text copy
+            dom.copyRewriteBtn.addEventListener('click', () => {
+                const text = dom.aiRewrittenText.textContent;
+                const tempTextArea = document.createElement('textarea');
+                tempTextArea.value = text;
+                document.body.appendChild(tempTextArea);
+                tempTextArea.select();
+                try {
+                    document.execCommand('copy');
+                    showToast('AI添削リライト文章をコピーしました！');
+                } catch (err) {
+                    showToast('コピーに失敗しました', 'error');
+                }
+                document.body.removeChild(tempTextArea);
+            });
+
+            // Apply AI rewriting (Upgraded to custom confirm modal)
+            dom.applyRewriteBtn.addEventListener('click', () => {
+                const text = dom.aiRewrittenText.textContent.trim();
+                if (text) {
+                    const targetName = state.aiSelectedTab === 1 ? 'テーマ1' : 'テーマ2';
+                    showCustomConfirm(
+                        'AI先生のお手本文章の適用',
+                        `現在の【${targetName}】の作文を、このAI添削文章に置き換えますか？（現在の文章は上書きされます）`,
+                        () => {
+                            if (state.aiSelectedTab === 1) {
+                                dom.hiddenEssayTextarea1.value = text;
+                                state.essayText1 = text;
+                            } else {
+                                dom.hiddenEssayTextarea2.value = text;
+                                state.essayText2 = text;
+                            }
+                            renderManuscripts();
+                            triggerAutoSave();
+                            closeAiModal();
+                            showToast(`${targetName}にAI添削文を反映させました。`);
+                        }
+                    );
+                }
+            });
+
+            // Global Clear Event (Upgraded to custom confirm modal)
+            dom.clearBtn.addEventListener('click', () => {
+                showCustomConfirm(
+                    '作文と生徒情報の完全消去',
+                    '両方の作文用紙および児童・生徒情報をすべて消去します。よろしいですか？（この操作は元に戻せません）',
+                    () => {
+                        dom.hiddenEssayTextarea1.value = '';
+                        dom.hiddenEssayTextarea2.value = '';
+                        state.essayText1 = '';
+                        state.essayText2 = '';
+                        
+                        dom.studentGrade.value = '';
+                        dom.studentClass.value = '';
+                        dom.studentNumber.value = '';
+                        dom.studentName.value = '';
+                        state.grade = '';
+                        state.classVal = '';
+                        state.number = '';
+                        state.name = '';
+
+                        renderManuscripts();
+                        triggerAutoSave();
+                        showToast('すべての内容を消去しました。', 'error');
+                    }
+                );
+            });
+
+            // Render Preview Modal
+            dom.confirmBtn.addEventListener('click', () => {
+                const validates = [
+                    { element: dom.studentGrade, name: '学年' },
+                    { element: dom.studentClass, name: 'クラス' },
+                    { element: dom.studentName, name: '名前' }
+                ];
+
+                let missing = [];
+                validates.forEach(f => {
+                    if (!f.element.value.trim()) {
+                        missing.push(f.name);
+                        f.element.classList.add('border-rose-400', 'bg-rose-50/20');
+                    } else {
+                        f.element.classList.remove('border-rose-400', 'bg-rose-50/20');
+                    }
+                });
+
+                if (missing.length > 0) {
+                    showToast(`必須項目が入力されていません: ${missing.join(', ')}`, 'error');
+                    return;
+                }
+
+                if (!state.essayText1.trim() && !state.essayText2.trim()) {
+                    showToast('どちらか一方のテーマには必ず作文を入力してください。', 'error');
+                    return;
+                }
+
+                renderPrintArea();
+
+                dom.confirmationModal.classList.remove('hidden');
+                setTimeout(() => {
+                    dom.modalCard.classList.remove('scale-95');
+                    dom.modalCard.classList.add('scale-100');
+                }, 50);
+            });
+
+            function closeModal() {
+                dom.modalCard.classList.remove('scale-100');
+                dom.modalCard.classList.add('scale-95');
+                setTimeout(() => dom.confirmationModal.classList.add('hidden'), 150);
+            }
+            dom.closeModalBtn.addEventListener('click', closeModal);
+            dom.modalBackBtn.addEventListener('click', closeModal);
+
+            // Multipage PDF Generation trigger via html2pdf
+            dom.downloadPdfBtn.addEventListener('click', () => {
+                showToast('2枚組PDFを出力しています。そのまま少々お待ちください...');
+
+                const safeName = `作文2枚組_${state.grade || '無所属'}_${state.classVal || ''}_${state.number || '0'}_${state.name || '未設定'}.pdf`;
+
+                const opt = {
+                    margin:       [0, 0, 0, 0],
+                    filename:     safeName,
+                    image:        { type: 'jpeg', quality: 0.98 },
+                    html2canvas:  { 
+                        scale: 2, 
+                        useCORS: true,
+                        letterRendering: true,
+                        logging: false
+                    },
+                    jsPDF:        { 
+                        unit: 'mm', 
+                        format: 'a4', 
+                        orientation: 'portrait' 
+                    }
+                };
+
+                html2pdf().from(dom.printableArea).set(opt).save().then(() => {
+                    showToast('2ページPDFの作成・ダウンロードが完了しました！');
+                    closeModal();
+                }).catch(err => {
+                    console.error('PDF error: ', err);
+                    showToast('PDFの出力処理でエラーが発生しました。', 'error');
+                });
+            });
+        }
+
+        // Initialize state variables on boot load
+        window.onload = async function() {
+            dom.configTheme1.value = state.theme1;
+            dom.configTheme1Min.value = state.theme1Min;
+            dom.configTheme1Max.value = state.theme1Max;
+            dom.configTheme2.value = state.theme2;
+            dom.configTheme2Min.value = state.theme2Min;
+            dom.configTheme2Max.value = state.theme2Max;
+
+            initializeEvents();
+            renderManuscripts();
+
+            // Run Cloud initialization process
+            await initializeFirebase();
+        };
+
+    </script>
+</body>
+</html>
