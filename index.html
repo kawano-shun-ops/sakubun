@@ -2,17 +2,17 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>作文作成サポートシステム（2テーマ同時入力・自動保存・マルチページPDF対応）</title>
-    <!-- Tailwind CSS for modern rapid UI development -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>2テーマ対応 原稿用紙作文システム</title>
+    <!-- Tailwind CSS for high quality modern layouts -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- FontAwesome for Premium UI Icons -->
+    <!-- FontAwesome for Premium Interface Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Google Fonts for Elegant Japanese Typography -->
+    <!-- Google Fonts for elegant classic Japanese fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=BIZ+UDGothic:wght@400;700&family=BIZ+UDMincho:wght@400;700&family=Inter:wght@400;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
-    <!-- html2pdf.js for Client-Side Premium PDF Generation -->
+    <!-- html2pdf.js library for highly formatted multi-page PDF outputs -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
     <style>
@@ -20,10 +20,11 @@
             font-family: 'Noto Sans JP', 'Inter', sans-serif;
             background-color: #f1f5f9;
         }
-        /* Genko Yoshi (Manuscript Paper) Styling */
+        /* Classic Genko Yoshi Manuscript Grid Styles */
         .genko-yoshi {
             font-family: 'BIZ UDMincho', 'Hiragino Mincho ProN', 'serif';
         }
+        /* Grid Cells optimized for Japanese full-width letters */
         .grid-cell {
             aspect-ratio: 1 / 1;
             display: flex;
@@ -35,7 +36,7 @@
             transition: all 0.15s ease;
             user-select: none;
         }
-        /* Classic Genko Yoshi Emerald Lines */
+        /* Genko Yoshi classic Emerald-green vertical/horizontal grid lines */
         .grid-line-emerald {
             border-color: rgba(16, 185, 129, 0.35);
         }
@@ -55,9 +56,9 @@
         .custom-scrollbar::-webkit-scrollbar-thumb:hover {
             background: #94a3b8;
         }
-        /* Virtual Caret blinking effect for direct writing experience */
+        /* Virtual Caret blinking simulation for natural interactive writing */
         @keyframes caretBlink {
-            0%, 100% { border-left-color: #10b981; }
+            0%, 100% { border-left-color: #059669; }
             50% { border-left-color: transparent; }
         }
         .virtual-caret {
@@ -65,12 +66,12 @@
             top: 10%;
             left: 2px;
             height: 80%;
-            border-left: 3px solid #10b981;
+            border-left: 3px solid #059669;
             animation: caretBlink 1s infinite;
             pointer-events: none;
             z-index: 10;
         }
-        /* Grid cell focus style */
+        /* Grid cell focus highlights */
         .grid-cell.cell-focused {
             background-color: rgba(16, 185, 129, 0.05);
         }
@@ -78,7 +79,7 @@
             background-color: rgba(16, 185, 129, 0.08);
             cursor: text;
         }
-        /* Shimmer effect for AI loading */
+        /* Shimmer loading effect for AI actions */
         @keyframes shimmer {
             0% { background-position: -200% 0; }
             100% { background-position: 200% 0; }
@@ -88,21 +89,152 @@
             background-size: 200% 100%;
             animation: shimmer 1.5s infinite;
         }
-        /* PDF specific styles to force page breaking rules */
+
+        /* 25 columns CSS Grid implementation */
+        .grid-cols-25 {
+            grid-template-columns: repeat(25, minmax(0, 1fr));
+        }
+
+        /* PDF page simulation box */
         .pdf-page {
             width: 794px;
-            height: 1122px;
-            padding: 35px 45px;
+            height: 1120px;
             box-sizing: border-box;
             position: relative;
             overflow: hidden;
             background: white;
-            page-break-after: always;
-            break-after: page;
+            margin-left: auto;
+            margin-right: auto;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: flex-end;
+            padding-right: 0px; /* ★ 右パディングを完全に0にして、右端限界密着にします */
+            transition: all 0.2s ease-in-out;
+        }
+        /* Multi-page split control */
+        .pdf-page:not(:last-child) {
+            page-break-after: always !important;
+            break-after: page !important;
+        }
+
+        #printableAreaWrapper {
+            transition: transform 0.2s ease-out, height 0.2s ease-out;
+            transform-origin: top center;
+        }
+
+        /* Standard native print window (Ctrl+P / Command+P) styles */
+        @media print {
+            @page {
+                size: A4 portrait;
+                margin: 0;
+            }
+            html, body {
+                width: 210mm !important;
+                height: 297mm !important;
+                background: white !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                overflow: visible !important;
+            }
+            /* 印刷時に関係ない全ての画面外枠パーツを非活性化 */
+            body > *:not(#confirmationModal),
+            #printHeaderSection,
+            #printAlertSection,
+            #confirmModal,
+            #toast {
+                display: none !important;
+            }
+            #confirmationModal {
+                position: absolute !important;
+                left: 0 !important;
+                top: 0 !important;
+                width: 210mm !important;
+                height: auto !important;
+                overflow: visible !important;
+                background: transparent !important;
+                display: block !important;
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+            #modalCard {
+                box-shadow: none !important;
+                border: none !important;
+                background: transparent !important;
+                width: 210mm !important;
+                max-width: none !important;
+                height: auto !important;
+                overflow: visible !important;
+                transform: none !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+            #printableAreaModalScroll {
+                background: transparent !important;
+                padding: 0 !important;
+                overflow: visible !important;
+                display: block !important;
+                height: auto !important;
+            }
+            #printableAreaContainer {
+                padding: 0 !important;
+                margin: 0 !important;
+                display: block !important;
+                width: 210mm !important;
+            }
+            #printableAreaWrapper {
+                transform: none !important;
+                width: 210mm !important;
+                display: block !important;
+            }
+            #printableArea {
+                width: 210mm !important;
+                display: block !important;
+            }
+            .pdf-page {
+                width: 210mm !important;
+                height: 297mm !important;
+                page-break-after: always !important;
+                break-after: page !important;
+                box-shadow: none !important;
+                border: none !important;
+                background: white !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                box-sizing: border-box !important;
+                display: flex !important;
+                flex-direction: column !important;
+                justify-content: center !important;
+                align-items: flex-end !important;
+                padding-right: 0mm !important; /* ★ 印刷時も右パディングを0mmにして、完璧な限界右寄せを再現します */
+                position: relative !important;
+                overflow: hidden !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+            /* プレビュー画面のタブ選択（表示・非表示状態）をそのまま紙の印刷にも100%引き継ぐ */
+            .pdf-page.hidden {
+                display: none !important;
+            }
+            .pdf-page.mt-16,
+            .pdf-page.mt-32 {
+                margin-top: 0 !important;
+            }
+            .pdf-page .genko-yoshi {
+                width: 185mm !important;
+                height: 265mm !important;
+                margin-top: 0 !important;
+                margin-bottom: 0 !important;
+                margin-left: auto !important;  /* ★ 印刷時、左マージンを自動（右寄せ）にします */
+                margin-right: 0 !important;      /* ★ 印刷時、右マージンを完全に0にします */
+                display: flex !important;
+                flex-direction: column !important;
+                justify-content: space-between !important;
+            }
         }
     </style>
 </head>
-<body class="min-h-screen text-slate-800 flex flex-col">
+<body class="min-h-screen text-slate-800 flex flex-col bg-slate-100">
 
     <!-- Header bar -->
     <header class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm">
@@ -113,7 +245,7 @@
                 </div>
                 <div>
                     <h1 class="text-xl font-bold tracking-tight text-slate-900">2テーマ同時入力・作文作成システム</h1>
-                    <p class="text-xs text-slate-500 hidden sm:block font-medium">テーマ1とテーマ2を並べて書き込み、2ページの美しいPDFを一括出力。自動一時保存機能つき</p>
+                    <p class="text-xs text-slate-500 hidden md:block font-medium">テーマ1とテーマ2を並べて書き込み、2ページの美しいPDFを一括出力。自動一時保存機能つき</p>
                 </div>
             </div>
             <!-- Settings panel toggle -->
@@ -232,7 +364,7 @@
                     </div>
                     <div>
                         <label class="block text-xs font-bold text-slate-600 mb-1">名前 <span class="text-red-500">*</span></label>
-                        <input type="text" id="studentName" placeholder="例: 山田 太郎" class="w-full border border-slate-200 rounded-lg p-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none bg-slate-50 focus:bg-white" required>
+                        <input type="text" id="studentName" placeholder="例: Yamada Taro" class="w-full border border-slate-200 rounded-lg p-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none bg-slate-50 focus:bg-white" required>
                     </div>
                 </div>
             </div>
@@ -260,8 +392,8 @@
                     <span>すべての入力を消去（クリア）</span>
                 </button>
                 <button id="confirmBtn" class="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-extrabold py-4 px-8 rounded-xl shadow-lg shadow-emerald-200 hover:shadow-emerald-300 transition duration-200 flex items-center justify-center space-x-2 text-base">
-                    <i class="fa-solid fa-file-pdf"></i>
-                    <span>確認・2ページPDF出力へ</span>
+                    <i class="fa-solid fa-print"></i>
+                    <span>仕上がりプレビュー・印刷へ</span>
                 </button>
             </div>
 
@@ -270,9 +402,8 @@
         <!-- Right Column: Dual Interactive Manuscript editors (8 cols) -->
         <section class="lg:col-span-8 flex flex-col space-y-6">
             
-            <!-- INVISIBLE TEXTAREAS to handle Japanese input method natively for each theme -->
-            <textarea id="hiddenEssayTextarea1" class="absolute opacity-0 pointer-events-none select-none z-0" style="width: 1px; height: 1px; overflow: hidden;" autocomplete="off" spellcheck="false"></textarea>
-            <textarea id="hiddenEssayTextarea2" class="absolute opacity-0 pointer-events-none select-none z-0" style="width: 1px; height: 1px; overflow: hidden;" autocomplete="off" spellcheck="false"></textarea>
+            <textarea id="hiddenEssayTextarea1" class="pointer-events-none select-none z-0" style="position: fixed; top: 50%; left: 50%; width: 1px; height: 1px; opacity: 0; overflow: hidden;" autocomplete="off" spellcheck="false"></textarea>
+            <textarea id="hiddenEssayTextarea2" class="pointer-events-none select-none z-0" style="position: fixed; top: 50%; left: 50%; width: 1px; height: 1px; opacity: 0; overflow: hidden;" autocomplete="off" spellcheck="false"></textarea>
 
             <!-- THEME 1 BOX -->
             <div class="bg-white rounded-xl shadow-sm border border-indigo-200 p-5 flex flex-col">
@@ -295,11 +426,9 @@
                     <div id="progressBar1" class="bg-gradient-to-r from-amber-400 to-indigo-500 h-full w-0 transition-all duration-300"></div>
                 </div>
 
-                <!-- Direct Type Area Layout Wrapper -->
                 <div class="overflow-x-auto border border-slate-200 rounded-xl bg-[#FAF9F5] p-4 custom-scrollbar flex justify-center items-start min-h-[350px] relative">
                     <div id="manuscriptPaper1" class="genko-yoshi bg-[#FAF9F5] min-w-[580px] w-full max-w-[620px] relative z-10 select-none">
                         
-                        <!-- Header names on paper -->
                         <div class="flex justify-between items-end mb-2 pb-2 border-b border-emerald-800/10 text-xs font-bold text-emerald-950">
                             <div>【作文用紙 - テーマ 1】</div>
                             <div class="flex space-x-3">
@@ -310,10 +439,8 @@
                             </div>
                         </div>
 
-                        <!-- 25 Column Grid Header Numbers -->
                         <div class="grid grid-cols-25 gap-0 text-[9px] text-center font-semibold text-emerald-800/30 mb-1 select-none colNumbers"></div>
 
-                        <!-- Main Grid System -->
                         <div id="manuscriptGrid1" class="grid grid-cols-25 border-r border-b grid-line-emerald gap-0 bg-white shadow-sm relative"></div>
                     </div>
                 </div>
@@ -340,11 +467,9 @@
                     <div id="progressBar2" class="bg-gradient-to-r from-amber-400 to-emerald-500 h-full w-0 transition-all duration-300"></div>
                 </div>
 
-                <!-- Direct Type Area Layout Wrapper -->
                 <div class="overflow-x-auto border border-slate-200 rounded-xl bg-[#FAF9F5] p-4 custom-scrollbar flex justify-center items-start min-h-[350px] relative">
                     <div id="manuscriptPaper2" class="genko-yoshi bg-[#FAF9F5] min-w-[580px] w-full max-w-[620px] relative z-10 select-none">
                         
-                        <!-- Header names on paper -->
                         <div class="flex justify-between items-end mb-2 pb-2 border-b border-emerald-800/10 text-xs font-bold text-emerald-950">
                             <div>【作文用紙 - テーマ 2】</div>
                             <div class="flex space-x-3">
@@ -355,10 +480,8 @@
                             </div>
                         </div>
 
-                        <!-- 25 Column Grid Header Numbers -->
                         <div class="grid grid-cols-25 gap-0 text-[9px] text-center font-semibold text-emerald-800/30 mb-1 select-none colNumbers"></div>
 
-                        <!-- Main Grid System -->
                         <div id="manuscriptGrid2" class="grid grid-cols-25 border-r border-b grid-line-emerald gap-0 bg-white shadow-sm relative"></div>
                     </div>
                 </div>
@@ -414,7 +537,6 @@
                 <!-- Result State (Hidden during loading) -->
                 <div id="aiResults" class="space-y-5 hidden">
                     
-                    <!-- Score stamp indicator -->
                     <div class="flex items-center justify-between bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
                         <div>
                             <span class="text-xs font-bold text-slate-400 block">選択中テーマのAI評価</span>
@@ -425,29 +547,22 @@
                         </div>
                     </div>
 
-                    <!-- Good points section -->
                     <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
                         <h4 class="font-bold text-emerald-900 flex items-center gap-2 mb-2">
                             <i class="fa-solid fa-circle-check text-emerald-600"></i>
                             <span>ここがすてき！（作文のよいところ）</span>
                         </h4>
-                        <ul id="aiGoodPoints" class="list-disc list-inside text-sm text-emerald-950 space-y-1.5 pl-1 font-medium">
-                            <!-- Injected by script -->
-                        </ul>
+                        <ul id="aiGoodPoints" class="list-disc list-inside text-sm text-emerald-950 space-y-1.5 pl-1 font-medium"></ul>
                     </div>
 
-                    <!-- Advice / Fix points section -->
                     <div class="bg-amber-50 border border-amber-200 rounded-xl p-4">
                         <h4 class="font-bold text-amber-900 flex items-center gap-2 mb-2">
                             <i class="fa-solid fa-pen-fancy text-amber-600"></i>
                             <span>もっとよくなるヒント（アドバイス）</span>
                         </h4>
-                        <ul id="aiAdvicePoints" class="list-disc list-inside text-sm text-amber-950 space-y-1.5 pl-1 font-medium">
-                            <!-- Injected by script -->
-                        </ul>
+                        <ul id="aiAdvicePoints" class="list-disc list-inside text-sm text-amber-950 space-y-1.5 pl-1 font-medium"></ul>
                     </div>
 
-                    <!-- Suggest rewrite textbox -->
                     <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
                         <div class="flex justify-between items-center mb-2 pb-2 border-b border-slate-100">
                             <h4 class="font-bold text-slate-900 flex items-center gap-2 text-sm">
@@ -459,9 +574,7 @@
                                 <span>リライト文章をコピーする</span>
                             </button>
                         </div>
-                        <p id="aiRewrittenText" class="text-sm text-slate-700 leading-relaxed bg-slate-50 p-3 rounded-lg border border-slate-100 select-all font-mono whitespace-pre-wrap">
-                            <!-- Injected by script -->
-                        </p>
+                        <p id="aiRewrittenText" class="text-sm text-slate-700 leading-relaxed bg-slate-50 p-3 rounded-lg border border-slate-100 select-all font-mono whitespace-pre-wrap"></p>
                         <div class="mt-3 flex justify-end">
                             <button id="applyRewriteBtn" class="bg-violet-50 hover:bg-violet-100 text-violet-700 border border-violet-200 text-xs font-bold py-1.5 px-3 rounded-lg transition duration-200">
                                 この添削リライト例を作文用紙に適用する
@@ -473,7 +586,6 @@
 
             </div>
 
-            <!-- Modal Footer -->
             <div class="bg-slate-50 border-t border-slate-200 px-6 py-4 flex justify-end items-center flex-shrink-0">
                 <button id="closeAiModalFooterBtn" class="bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold py-2.5 px-5 rounded-xl transition text-sm">
                     閉じる
@@ -483,172 +595,194 @@
     </section>
 
     <!-- Full-screen Overlay Modal for Preview & Confirming prior to PDF Generation -->
-    <section id="confirmationModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto hidden">
-        <div class="bg-white rounded-2xl w-full max-w-4xl shadow-2xl flex flex-col max-h-[95vh] overflow-hidden transform scale-95 transition-transform duration-300 ease-out my-4" id="modalCard">
+    <section id="confirmationModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-2 sm:p-4 overflow-y-auto hidden">
+        <div class="bg-white rounded-2xl w-full max-w-4xl shadow-2xl flex flex-col h-[96vh] sm:h-auto max-h-[96vh] overflow-hidden transform scale-95 transition-transform duration-300 ease-out my-2" id="modalCard">
             
-            <!-- Modal Header -->
-            <div class="bg-slate-50 border-b border-slate-200 px-6 py-4 flex justify-between items-center flex-shrink-0">
-                <div class="flex items-center space-x-2">
-                    <span class="bg-emerald-100 text-emerald-800 rounded-full px-3 py-1 text-xs font-bold">確認画面</span>
-                    <h3 class="text-lg font-bold text-slate-900">作成した作文の内容確認とPDF出力</h3>
+            <!-- Modal Header (Contains ALL Action Buttons on top) -->
+            <div id="printHeaderSection" class="bg-slate-50 border-b border-slate-200 px-4 py-3 sm:px-6 sm:py-4 flex flex-col md:flex-row gap-3 justify-between items-stretch md:items-center flex-shrink-0">
+                <div class="flex items-center justify-between md:justify-start space-x-2">
+                    <div class="flex items-center space-x-2">
+                        <span class="bg-emerald-100 text-emerald-800 rounded-full px-2.5 py-0.5 text-xs font-bold">確認画面</span>
+                        <h3 class="text-sm sm:text-base font-bold text-slate-900">作文確認と印刷・PDF保存</h3>
+                    </div>
+                    <button id="closeModalBtn" class="md:hidden text-slate-400 hover:text-slate-600 transition p-1 rounded-lg">
+                        <i class="fa-solid fa-xmark text-xl"></i>
+                    </button>
                 </div>
-                <button id="closeModalBtn" class="text-slate-400 hover:text-slate-600 transition p-1.5 rounded-lg hover:bg-slate-100">
-                    <i class="fa-solid fa-xmark text-xl"></i>
-                </button>
+                <div class="flex flex-col sm:flex-row gap-2 items-stretch">
+                    <button id="modalBackBtn" class="bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold py-2 px-4 rounded-xl transition text-xs flex items-center justify-center space-x-1.5">
+                        <i class="fa-solid fa-arrow-left"></i>
+                        <span>修正に戻る</span>
+                    </button>
+                    <button id="printBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-xl shadow-md transition text-xs flex items-center justify-center space-x-1.5">
+                        <i class="fa-solid fa-print"></i>
+                        <span>印刷する（ブラウザ経由）</span>
+                    </button>
+                    <button id="downloadPdfBtn" class="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-2 px-5 rounded-xl shadow-md shadow-emerald-200 transition text-xs flex items-center justify-center space-x-1.5">
+                        <i class="fa-solid fa-file-pdf"></i>
+                        <span>PDFファイルとして保存</span>
+                    </button>
+                    <button id="closeModalBtnDesktop" class="hidden md:block text-slate-400 hover:text-slate-600 transition p-1.5 rounded-lg hover:bg-slate-200">
+                        <i class="fa-solid fa-xmark text-lg"></i>
+                    </button>
+                </div>
             </div>
 
             <!-- Modal Content - Printable Draft Wrap -->
-            <div class="p-4 sm:p-6 overflow-y-auto custom-scrollbar flex-grow bg-slate-100">
-                <div class="mb-4 bg-amber-50 border border-amber-200 rounded-xl p-4 text-xs text-amber-950 flex items-start space-x-2 shadow-sm">
-                    <i class="fa-solid fa-circle-exclamation text-amber-600 mt-0.5 text-sm"></i>
+            <div id="printableAreaModalScroll" class="p-3 sm:p-6 overflow-y-auto custom-scrollbar flex-grow bg-slate-300/40 flex flex-col items-center">
+                
+                <!-- ページ切り替えタブを追加（PDF生成前の徹底的な確認のためのプレビュー制御） -->
+                <div class="flex justify-center space-x-2 mb-4 bg-white/95 p-1.5 rounded-xl border border-slate-200 shadow-sm z-10 flex-shrink-0">
+                    <button id="previewTabPage1" class="px-4 py-2 text-xs font-bold rounded-lg transition duration-200 bg-indigo-600 text-white shadow-sm flex items-center gap-1.5">
+                        <i class="fa-solid fa-file-lines"></i>
+                        <span>1ページ目（テーマ1）</span>
+                    </button>
+                    <button id="previewTabPage2" class="px-4 py-2 text-xs font-bold rounded-lg transition duration-200 text-slate-600 hover:bg-slate-200 flex items-center gap-1.5">
+                        <i class="fa-solid fa-file-lines"></i>
+                        <span>2ページ目（テーマ2）</span>
+                    </button>
+                    <button id="previewTabAll" class="px-4 py-2 text-xs font-bold rounded-lg transition duration-200 text-slate-600 hover:bg-slate-200 flex items-center gap-1.5">
+                        <i class="fa-solid fa-rectangle-list"></i>
+                        <span>2ページまとめて表示</span>
+                    </button>
+                </div>
+
+                <div id="printAlertSection" class="w-full max-w-[794px] mb-4 bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-950 flex items-start space-x-2 shadow-sm flex-shrink-0">
+                    <i class="fa-solid fa-circle-exclamation text-amber-600 mt-0.5"></i>
                     <div>
-                        <span class="font-bold">PDF出力の確認（2ページ構成）：</span>
-                        <p class="mt-0.5">1ページ目に「テーマ1」、2ページ目に「テーマ2」が美しく改ページされ自動出力されます。提出シート上の「巨大文字数スタンプ(空白を除く)」の数値をご確認ください。</p>
+                        <span class="font-bold">印刷・PDF出力の確認（2ページ構成）：</span>
+                        <p class="mt-0.5">上部タブで各用紙の文字ズレや余白（右揃え・上下中央）が綺麗に収まっているかご確認ください。上部の「PDFファイルとして保存」をクリックすると、プレビュー通りの2ページ構成PDFをダウンロードできます。</p>
                     </div>
                 </div>
 
-                <!-- Printable Container starts here (html2pdf wrapper) -->
-                <div id="printableArea" class="mx-auto flex flex-col items-center" style="width: 794px;">
-                    
-                    <!-- ================= PAGE 1: THEME 1 ================= -->
-                    <div class="pdf-page shadow-md border border-slate-200">
-                        <div class="genko-yoshi h-full flex flex-col justify-between">
+                <div id="printableAreaContainer" class="w-full flex justify-center items-start flex-shrink-0 pb-8">
+                    <div id="printableAreaWrapper" class="w-[794px] flex flex-col items-center origin-top">
+                        <div id="printableArea" class="w-[794px]">
                             
-                            <div>
-                                <!-- Header Grid containing HUGE characters count stamp -->
-                                <div class="flex justify-between items-start border-b-2 border-emerald-800 pb-3 mb-3">
+                            <!-- ================= PAGE 1: THEME 1 ================= -->
+                            <div id="pdfPage1" class="pdf-page shadow-2xl border border-slate-300 bg-white">
+                                <!-- ★ mx-auto を ml-auto mr-0 に変更し、枠内で完全に右へ吸着させます -->
+                                <div class="genko-yoshi h-[1000px] flex flex-col justify-between w-[700px] ml-auto mr-0">
+                                    
                                     <div>
-                                        <h1 class="text-xl font-black text-emerald-950 tracking-wider">作　文　提　出　シ　ー　ト</h1>
-                                        <div class="text-[10px] text-emerald-800 font-bold mt-0.5">【テーマ 1】 25文字 × <span class="printRowsCount1">16</span>行 設定</div>
-                                    </div>
-                                    <!-- HUGE CHARACTERS COUNT DISPLAY -->
-                                    <div class="bg-gradient-to-br from-amber-500 to-amber-600 text-white rounded-lg py-1 px-3 shadow-sm text-center border border-amber-300">
-                                        <span class="text-[8px] font-bold block uppercase tracking-wider text-amber-100 leading-none">テーマ1 文字数(空白除)</span>
-                                        <span class="text-2xl font-black tracking-tighter" id="printCharCount1">0</span>
-                                        <span class="text-[9px] font-bold text-amber-100"> 文字</span>
-                                    </div>
-                                </div>
+                                        <div class="flex justify-between items-start border-b-2 border-emerald-800 pb-3 mb-3">
+                                            <div>
+                                                <h1 class="text-xl font-black text-emerald-950 tracking-wider">作　文　提　出　シ　ー　ト</h1>
+                                                <div class="text-[10px] text-emerald-800 font-bold mt-0.5">【テーマ 1】 25文字 × <span class="printRowsCount1">16</span>行 設定</div>
+                                            </div>
+                                            <!-- 入力文字数の大きな表示表示領域 -->
+                                            <div class="bg-indigo-50 border-2 border-indigo-200 rounded-xl px-4 py-2 text-center shadow-sm">
+                                                <span class="text-[9px] font-bold block leading-none text-indigo-600 mb-1">テーマ1 入力文字数</span>
+                                                <div class="flex items-baseline justify-center">
+                                                    <span class="text-3xl font-black text-indigo-700" id="printCharCount1">0</span>
+                                                    <span class="text-[10px] font-bold text-slate-500 ml-0.5"> / <span class="printThemeRangeMax1">400</span>字</span>
+                                                </div>
+                                            </div>
+                                        </div>
 
-                                <!-- Metainfo Row -->
-                                <div class="bg-slate-50 border border-slate-200 rounded-lg p-3 mb-4 grid grid-cols-1 md:grid-cols-2 gap-2 text-xs text-slate-800">
-                                    <div>
-                                        <div class="text-[9px] text-slate-500 font-bold">【作文テーマ1】</div>
-                                        <div class="text-xs font-extrabold text-emerald-950 mt-0.5" id="printTheme1">「未入力」</div>
-                                        <div class="text-[8px] text-emerald-800 mt-0.5 font-bold">指定文字数：<span id="printThemeRange1"></span>字</div>
-                                    </div>
-                                    <div class="grid grid-cols-3 gap-1 border-t md:border-t-0 md:border-l border-slate-200 pt-2 md:pt-0 md:pl-4">
-                                        <div class="col-span-1">
-                                            <span class="text-[9px] text-slate-500 block font-semibold">所属</span>
-                                            <span class="font-bold text-slate-900 printGradeClass text-[10px]"> </span>
+                                        <div class="bg-slate-50 border border-slate-200 rounded-lg p-3 mb-4 grid grid-cols-1 md:grid-cols-2 gap-2 text-xs text-slate-800">
+                                            <div>
+                                                <div class="text-[9px] text-slate-500 font-bold">【作文テーマ1】</div>
+                                                <div class="text-xs font-extrabold text-emerald-950 mt-0.5" id="printTheme1">「未入力」</div>
+                                                <div class="text-[8px] text-emerald-800 mt-0.5 font-bold">指定文字数：<span id="printThemeRange1"></span>字</div>
+                                            </div>
+                                            <div class="grid grid-cols-3 gap-1 border-t md:border-t-0 md:border-l border-slate-200 pt-2 md:pt-0 md:pl-4">
+                                                <div class="col-span-1">
+                                                    <span class="text-[9px] text-slate-500 block font-semibold">所属</span>
+                                                    <span class="font-bold text-slate-900 printGradeClass text-[10px]"> </span>
+                                                </div>
+                                                <div class="col-span-1">
+                                                    <span class="text-[9px] text-slate-500 block font-semibold">番号</span>
+                                                    <span class="font-bold text-slate-900 printNumber text-[10px]"> </span>
+                                                </div>
+                                                <div class="col-span-1">
+                                                    <span class="text-[9px] text-slate-500 block font-semibold">氏名</span>
+                                                    <span class="font-extrabold text-slate-900 truncate printName text-[10px]"> </span>
+                                                </div>
+                                            </div>
                                         </div>
-                                        <div class="col-span-1">
-                                            <span class="text-[9px] text-slate-500 block font-semibold">番号</span>
-                                            <span class="font-bold text-slate-900 printNumber text-[10px]"> </span>
-                                        </div>
-                                        <div class="col-span-1">
-                                            <span class="text-[9px] text-slate-500 block font-semibold">氏名</span>
-                                            <span class="font-extrabold text-slate-900 truncate printName text-[10px]"> </span>
-                                        </div>
-                                    </div>
-                                </div>
 
-                                <!-- Main Grid Section on Paper -->
-                                <div class="mb-2">
-                                    <div id="printGrid1" class="grid grid-cols-25 border-r border-b border-emerald-800/40 gap-0 bg-white">
-                                        <!-- Dynamic layout via JS -->
+                                        <div class="mb-2">
+                                            <div id="printGrid1" class="grid grid-cols-25 border-r border-b border-emerald-800/40 gap-0 bg-white"></div>
+                                        </div>
+                                    </div>
+
+                                    <div class="flex justify-between items-center text-[8px] text-slate-400 border-t border-slate-100 pt-2 pb-1">
+                                        <span>提出用作文シート - 1ページ目 (テーマ1)</span>
+                                        <span>用紙全体のマス: <span id="printGridCount1">0</span>マス</span>
                                     </div>
                                 </div>
                             </div>
 
-                            <!-- Footer -->
-                            <div class="flex justify-between items-center text-[8px] text-slate-400 border-t border-slate-100 pt-2 pb-1">
-                                <span>提出用作文シート - 1ページ目 (テーマ1)</span>
-                                <span>用紙全体のマス: <span id="printGridCount1">0</span>マス</span>
+                            <!-- ================= PAGE 2: THEME 2 ================= -->
+                            <!-- ★ mt-32 にて確認用の余白を設定（印刷・PDF出力時のみメディアクエリで自動的にリセット） -->
+                            <div id="pdfPage2" class="pdf-page shadow-2xl border border-slate-300 bg-white mt-32">
+                                <!-- ★ mx-auto を ml-auto mr-0 に変更し、枠内で完全に右へ吸着させます -->
+                                <div class="genko-yoshi h-[1000px] flex flex-col justify-between w-[700px] ml-auto mr-0">
+                                    
+                                    <div>
+                                        <div class="flex justify-between items-start border-b-2 border-emerald-800 pb-3 mb-3">
+                                            <div>
+                                                <h1 class="text-xl font-black text-emerald-950 tracking-wider">作　文　提　出　シ　ー　ト</h1>
+                                                <div class="text-[10px] text-emerald-800 font-bold mt-0.5">【テーマ 2】 25文字 × <span class="printRowsCount2">16</span> row 設定</div>
+                                            </div>
+                                            <!-- 入力文字数の大きな表示表示領域 -->
+                                            <div class="bg-emerald-50 border-2 border-emerald-200 rounded-xl px-4 py-2 text-center shadow-sm">
+                                                <span class="text-[9px] font-bold block leading-none text-emerald-600 mb-1">テーマ2 入力文字数</span>
+                                                <div class="flex items-baseline justify-center">
+                                                    <span class="text-3xl font-black text-emerald-700" id="printCharCount2">0</span>
+                                                    <span class="text-[10px] font-bold text-slate-500 ml-0.5"> / <span class="printThemeRangeMax2">200</span>字</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="bg-slate-50 border border-slate-200 rounded-lg p-3 mb-4 grid grid-cols-1 md:grid-cols-2 gap-2 text-xs text-slate-800">
+                                            <div>
+                                                <div class="text-[9px] text-slate-500 font-bold">【作文テーマ2】</div>
+                                                <div class="text-xs font-extrabold text-emerald-950 mt-0.5" id="printTheme2">「未入力」</div>
+                                                <div class="text-[8px] text-emerald-800 mt-0.5 font-bold">指定文字数：<span id="printThemeRange2"></span>字</div>
+                                            </div>
+                                            <div class="grid grid-cols-3 gap-1 border-t md:border-t-0 md:border-l border-slate-200 pt-2 md:pt-0 md:pl-4">
+                                                <div class="col-span-1">
+                                                    <span class="text-[9px] text-slate-500 block font-semibold">所属</span>
+                                                    <span class="font-bold text-slate-900 printGradeClass text-[10px]"> </span>
+                                                </div>
+                                                <div class="col-span-1">
+                                                    <span class="text-[9px] text-slate-500 block font-semibold">番号</span>
+                                                    <span class="font-bold text-slate-900 printNumber text-[10px]"> </span>
+                                                </div>
+                                                <div class="col-span-1">
+                                                    <span class="text-[9px] text-slate-500 block font-semibold">氏名</span>
+                                                    <span class="font-extrabold text-slate-900 truncate printName text-[10px]"> </span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="mb-2">
+                                            <div id="printGrid2" class="grid grid-cols-25 border-r border-b border-emerald-800/40 gap-0 bg-white"></div>
+                                        </div>
+                                    </div>
+
+                                    <div class="flex justify-between items-center text-[8px] text-slate-400 border-t border-slate-100 pt-2 pb-1">
+                                        <span>提出用作文シート - 2ページ目 (テーマ2)</span>
+                                        <span>用紙全体のマス: <span id="printGridCount2">0</span>マス</span>
+                                    </div>
+                                </div>
                             </div>
+
                         </div>
                     </div>
-
-                    <!-- ================= PAGE 2: THEME 2 ================= -->
-                    <div class="pdf-page shadow-md border border-slate-200">
-                        <div class="genko-yoshi h-full flex flex-col justify-between">
-                            
-                            <div>
-                                <!-- Header Grid containing HUGE characters count stamp -->
-                                <div class="flex justify-between items-start border-b-2 border-emerald-800 pb-3 mb-3">
-                                    <div>
-                                        <h1 class="text-xl font-black text-emerald-950 tracking-wider">作　文　提　出　シ　ー　ト</h1>
-                                        <div class="text-[10px] text-emerald-800 font-bold mt-0.5">【テーマ 2】 25文字 × <span class="printRowsCount2">16</span>行 設定</div>
-                                    </div>
-                                    <!-- HUGE CHARACTERS COUNT DISPLAY -->
-                                    <div class="bg-gradient-to-br from-emerald-600 to-emerald-700 text-white rounded-lg py-1 px-3 shadow-sm text-center border border-emerald-400">
-                                        <span class="text-[8px] font-bold block uppercase tracking-wider text-emerald-100 leading-none">テーマ2 文字数(空白除)</span>
-                                        <span class="text-2xl font-black tracking-tighter" id="printCharCount2">0</span>
-                                        <span class="text-[9px] font-bold text-emerald-100"> 文字</span>
-                                    </div>
-                                </div>
-
-                                <!-- Metainfo Row -->
-                                <div class="bg-slate-50 border border-slate-200 rounded-lg p-3 mb-4 grid grid-cols-1 md:grid-cols-2 gap-2 text-xs text-slate-800">
-                                    <div>
-                                        <div class="text-[9px] text-slate-500 font-bold">【作文テーマ2】</div>
-                                        <div class="text-xs font-extrabold text-emerald-950 mt-0.5" id="printTheme2">「未入力」</div>
-                                        <div class="text-[8px] text-emerald-800 mt-0.5 font-bold">指定文字数：<span id="printThemeRange2"></span>字</div>
-                                    </div>
-                                    <div class="grid grid-cols-3 gap-1 border-t md:border-t-0 md:border-l border-slate-200 pt-2 md:pt-0 md:pl-4">
-                                        <div class="col-span-1">
-                                            <span class="text-[9px] text-slate-500 block font-semibold">所属</span>
-                                            <span class="font-bold text-slate-900 printGradeClass text-[10px]"> </span>
-                                        </div>
-                                        <div class="col-span-1">
-                                            <span class="text-[9px] text-slate-500 block font-semibold">番号</span>
-                                            <span class="font-bold text-slate-900 printNumber text-[10px]"> </span>
-                                        </div>
-                                        <div class="col-span-1">
-                                            <span class="text-[9px] text-slate-500 block font-semibold">氏名</span>
-                                            <span class="font-extrabold text-slate-900 truncate printName text-[10px]"> </span>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- Main Grid Section on Paper -->
-                                <div class="mb-2">
-                                    <div id="printGrid2" class="grid grid-cols-25 border-r border-b border-emerald-800/40 gap-0 bg-white">
-                                        <!-- Dynamic layout via JS -->
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Footer -->
-                            <div class="flex justify-between items-center text-[8px] text-slate-400 border-t border-slate-100 pt-2 pb-1">
-                                <span>提出用作文シート - 2ページ目 (テーマ2)</span>
-                                <span>用紙全体のマス: <span id="printGridCount2">0</span>マス</span>
-                            </div>
-                        </div>
-                    </div>
-
                 </div>
-            </div>
-
-            <!-- Modal Action Buttons (Footer) -->
-            <div class="bg-slate-50 border-t border-slate-200 px-6 py-4 flex justify-between items-center flex-shrink-0">
-                <button id="modalBackBtn" class="bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold py-2.5 px-5 rounded-xl transition text-sm flex items-center space-x-2">
-                    <i class="fa-solid fa-arrow-left"></i>
-                    <span>修正に戻る</span>
-                </button>
-                <button id="downloadPdfBtn" class="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-3.5 px-8 rounded-xl shadow-lg shadow-emerald-200 transition text-sm flex items-center space-x-2">
-                    <i class="fa-solid fa-file-pdf"></i>
-                    <span>2ページをまとめてPDF保存</span>
-                </button>
             </div>
 
         </div>
     </section>
 
-    <!-- Custom Confirm Modal (Replacement of Standard confirm()) -->
+    <!-- Custom Confirm Modal -->
     <div id="confirmModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
         <div class="bg-white rounded-2xl w-full max-w-md shadow-2xl p-6 transform scale-95 transition-all duration-200 ease-out" id="confirmModalCard">
             <h3 id="confirmModalTitle" class="text-lg font-bold text-slate-900 mb-2">確認</h3>
-            <p id="confirmModalMessage" class="text-sm text-slate-600 mb-6">本当に実行しますか？</p>
+            <p id="confirmModalMessage" class="text-sm text-slate-600 mb-6">本当に実行しますか?</p>
             <div class="flex justify-end space-x-3">
                 <button id="confirmCancelBtn" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 px-4 rounded-xl text-xs transition">キャンセル</button>
                 <button id="confirmOkBtn" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-5 rounded-xl text-xs shadow-md transition">実行する</button>
@@ -662,13 +796,13 @@
         <span id="toastMessage" class="text-sm font-semibold">保存しました</span>
     </div>
 
-    <!-- Firebase core module scripts with custom setup logic -->
+    <!-- Firebase SDK / Main Interactive logic -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Global state variable
+        // Global State variables
         const state = {
             theme1: "「将来の夢について」",
             theme2: "「これまでに一番がんばったこと」",
@@ -686,10 +820,12 @@
             essayText2: "",
 
             aiResultsData: null,
-            aiSelectedTab: 1
+            aiSelectedTab: 1,
+            
+            // プレビュー表示の現在の管理モード ('page1', 'page2', 'all')
+            previewMode: 'page1'
         };
 
-        // UI DOM Reference pointers
         const dom = {
             configTheme1: document.getElementById('configTheme1'),
             configTheme1Min: document.getElementById('configTheme1Min'),
@@ -734,14 +870,18 @@
             confirmationModal: document.getElementById('confirmationModal'),
             modalCard: document.getElementById('modalCard'),
             closeModalBtn: document.getElementById('closeModalBtn'),
+            closeModalBtnDesktop: document.getElementById('closeModalBtnDesktop'),
             modalBackBtn: document.getElementById('modalBackBtn'),
+            printBtn: document.getElementById('printBtn'),
             downloadPdfBtn: document.getElementById('downloadPdfBtn'),
             printableArea: document.getElementById('printableArea'),
             
             printTheme1: document.getElementById('printTheme1'),
             printThemeRange1: document.getElementById('printThemeRange1'),
+            printThemeRangeMax1: document.querySelector('.printThemeRangeMax1'),
             printTheme2: document.getElementById('printTheme2'),
             printThemeRange2: document.getElementById('printThemeRange2'),
+            printThemeRangeMax2: document.querySelector('.printThemeRangeMax2'),
             printGrid1: document.getElementById('printGrid1'),
             printGrid2: document.getElementById('printGrid2'),
             printCharCount1: document.getElementById('printCharCount1'),
@@ -769,18 +909,26 @@
             aiTabBtn1: document.getElementById('aiTabBtn1'),
             aiTabBtn2: document.getElementById('aiTabBtn2'),
 
-            // Save elements
-            saveStatus: document.getElementById('saveStatus'),
-            manualSaveBtn: document.getElementById('manualSaveBtn'),
-            manualLoadBtn: document.getElementById('manualLoadBtn'),
-
-            // Custom Confirm modal elements
             confirmModal: document.getElementById('confirmModal'),
             confirmModalCard: document.getElementById('confirmModalCard'),
             confirmModalTitle: document.getElementById('confirmModalTitle'),
             confirmModalMessage: document.getElementById('confirmModalMessage'),
             confirmCancelBtn: document.getElementById('confirmCancelBtn'),
-            confirmOkBtn: document.getElementById('confirmOkBtn')
+            confirmOkBtn: document.getElementById('confirmOkBtn'),
+
+            saveStatus: document.getElementById('saveStatus'),
+            manualSaveBtn: document.getElementById('manualSaveBtn'),
+            manualLoadBtn: document.getElementById('manualLoadBtn'),
+
+            printHeaderSection: document.getElementById('printHeaderSection'),
+            printAlertSection: document.getElementById('printAlertSection'),
+
+            // プレビュータブ用
+            previewTabPage1: document.getElementById('previewTabPage1'),
+            previewTabPage2: document.getElementById('previewTabPage2'),
+            previewTabAll: document.getElementById('previewTabAll'),
+            pdfPage1: document.getElementById('pdfPage1'),
+            pdfPage2: document.getElementById('pdfPage2')
         };
 
         // CSS style injection for 25 columns
@@ -792,7 +940,7 @@
         `;
         document.head.appendChild(styleSheet);
 
-        // Firestore configuration state
+        // Firebase state variables
         let db = null;
         let auth = null;
         let userId = null;
@@ -800,52 +948,27 @@
         let isFirebaseActive = false;
         let autoSaveTimer = null;
 
-        // Setup Cloud Firestore database client session connection
-        async function initializeFirebase() {
-            try {
-                // Get globally injected attributes safely
-                appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-                
-                if (typeof __firebase_config !== 'undefined' && __firebase_config) {
-                    const firebaseConfig = JSON.parse(__firebase_config);
-                    const app = initializeApp(firebaseConfig);
-                    db = getFirestore(app);
-                    auth = getAuth(app);
-
-                    // Sign-in processing
-                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                        await signInWithCustomToken(auth, __initial_auth_token);
-                    } else {
-                        await signInAnonymously(auth);
-                    }
-
-                    userId = auth.currentUser?.uid || crypto.randomUUID();
-                    isFirebaseActive = true;
-                    updateSaveStatus('cloud-idle');
-
-                    // Automatically restore data on load
-                    await loadSavedData();
-                } else {
-                    throw new Error("No config available");
-                }
-            } catch (err) {
-                console.warn("Firebase not active or local environment. Falling back to localStorage: ", err);
-                isFirebaseActive = false;
-                userId = 'local-user';
-                updateSaveStatus('local-active');
-                
-                // Load local copy
-                loadFromLocalStorage();
+        // Custom Premium toast alerts
+        function showToast(message, type = 'success') {
+            dom.toastMessage.textContent = message;
+            if (type === 'success') {
+                dom.toastIcon.innerHTML = '<i class="fa-solid fa-circle-check"></i>';
+                dom.toastIcon.className = 'text-emerald-400';
+            } else if (type === 'error') {
+                dom.toastIcon.innerHTML = '<i class="fa-solid fa-circle-exclamation"></i>';
+                dom.toastIcon.className = 'text-amber-500';
             }
+            
+            dom.toast.classList.remove('translate-y-20', 'opacity-0');
+            dom.toast.classList.add('translate-y-0', 'opacity-100');
+            
+            setTimeout(() => {
+                dom.toast.classList.add('translate-y-20', 'opacity-0');
+                dom.toast.classList.remove('translate-y-0', 'opacity-100');
+            }, 3000);
         }
 
-        // Helper to count characters excluding spaces (all forms of spaces & newlines)
-        function getCharCount(text) {
-            if (!text) return 0;
-            return text.replace(/[\s　\n\r]/g, '').length;
-        }
-
-        // Helper to handle custom confirm modals asynchronously
+        // Custom Confirm dialog trigger
         function showCustomConfirm(title, message, onConfirm) {
             dom.confirmModalTitle.textContent = title;
             dom.confirmModalMessage.textContent = message;
@@ -875,12 +998,12 @@
             };
         }
 
-        // Helper to update status indicators elegantly
+        // Save status visual syncing indicator helper
         function updateSaveStatus(type, extraTime = '') {
             if (!dom.saveStatus) return;
             switch(type) {
                 case 'cloud-idle':
-                    dom.saveStatus.innerHTML = '<i class="fa-solid fa-cloud-arrow-up text-emerald-500"></i> クラウド同期中';
+                    dom.saveStatus.innerHTML = '<i class="fa-solid fa-cloud-arrow-up text-emerald-500"></i> 一時保存可能';
                     dom.saveStatus.className = "font-bold text-emerald-600 flex items-center gap-1";
                     break;
                 case 'saving':
@@ -888,25 +1011,25 @@
                     dom.saveStatus.className = "font-bold text-indigo-600 flex items-center gap-1";
                     break;
                 case 'saved':
-                    dom.saveStatus.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-600"></i> 保存完了 (${extraTime})`;
+                    dom.saveStatus.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-600"></i> 自動保存完了 (${extraTime})`;
                     dom.saveStatus.className = "font-bold text-emerald-600 flex items-center gap-1";
                     break;
                 case 'error':
-                    dom.saveStatus.innerHTML = '<i class="fa-solid fa-triangle-exclamation text-amber-500"></i> 保存エラー';
+                    dom.saveStatus.innerHTML = '<i class="fa-solid fa-triangle-exclamation text-amber-500"></i> 保存失敗';
                     dom.saveStatus.className = "font-bold text-amber-600 flex items-center gap-1";
                     break;
                 case 'local-active':
-                    dom.saveStatus.innerHTML = '<i class="fa-solid fa-hard-drive text-amber-600"></i> ローカル一時保存中';
+                    dom.saveStatus.innerHTML = '<i class="fa-solid fa-hard-drive text-amber-600"></i> ローカル一時保存アクティブ';
                     dom.saveStatus.className = "font-bold text-amber-700 flex items-center gap-1";
                     break;
                 case 'restored':
-                    dom.saveStatus.innerHTML = '<i class="fa-solid fa-clock-rotate-left text-emerald-600"></i> 作文を復元しました';
+                    dom.saveStatus.innerHTML = '<i class="fa-solid fa-clock-rotate-left text-emerald-600"></i> 下書きを復元しました';
                     dom.saveStatus.className = "font-bold text-emerald-600 flex items-center gap-1";
                     break;
             }
         }
 
-        // Standard payload construction
+        // Build save payload structure
         function getSavePayload() {
             return {
                 grade: state.grade || "",
@@ -925,34 +1048,31 @@
             };
         }
 
-        // Manual or Automatic Save to Firestore (Rule 1 Strict Path Compliant)
+        // Firestore private save transaction
         async function saveData() {
             updateSaveStatus('saving');
             const payload = getSavePayload();
 
-            // Always fallback to localStorage first as a secondary backup
+            // Local fallback backup
             localStorage.setItem('composition_draft', JSON.stringify(payload));
 
             if (isFirebaseActive && db && userId) {
                 try {
-                    // Strict Path rule: /artifacts/{appId}/users/{userId}/{collectionName}/{documentId}
+                    // Strict Path rule check: /artifacts/{appId}/users/{userId}/{collectionName}/{documentId}
                     const saveDocRef = doc(db, 'artifacts', appId, 'users', userId, 'saves', 'draft');
                     await setDoc(saveDocRef, payload, { merge: true });
-                    
                     const now = new Date();
                     const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
                     updateSaveStatus('saved', timeStr);
                 } catch (err) {
-                    console.error("Firestore Save failed: ", err);
+                    console.error("Firestore save error: ", err);
                     updateSaveStatus('error');
                 }
             } else {
-                // If strictly in local mode
                 updateSaveStatus('local-active');
             }
         }
 
-        // Automatic debouncer to save only after 2s of quietness
         function triggerAutoSave() {
             if (autoSaveTimer) clearTimeout(autoSaveTimer);
             updateSaveStatus('saving');
@@ -961,7 +1081,6 @@
             }, 2000);
         }
 
-        // Restore from Firestore Document
         async function loadSavedData() {
             if (isFirebaseActive && db && userId) {
                 try {
@@ -971,14 +1090,13 @@
                         const data = snapshot.data();
                         applyLoadedData(data);
                         updateSaveStatus('restored');
-                        showToast('前回の作成データをクラウドから復元しました！');
+                        showToast('一時保存されていたデータをクラウドから復元しました！');
                         return;
                     }
                 } catch (err) {
                     console.error("Firestore loading error: ", err);
                 }
             }
-            // Fallback load if cloud not found or inactive
             loadFromLocalStorage();
         }
 
@@ -989,16 +1107,15 @@
                     const data = JSON.parse(localCopy);
                     applyLoadedData(data);
                     updateSaveStatus('restored');
-                    showToast('保存されていたデータを復元しました。');
+                    showToast('ローカル一時保存データから作文を復元しました。');
                 } catch (err) {
                     console.error("Local restore parse error: ", err);
                 }
             } else {
-                showToast('保存されている一時データが見つかりませんでした。', 'error');
+                showToast('保存されている下書きはありませんでした。');
             }
         }
 
-        // Assign recovered fields back to inputs & view models
         function applyLoadedData(data) {
             state.grade = data.grade || "";
             state.classVal = data.classVal || "";
@@ -1013,7 +1130,6 @@
             state.essayText1 = data.essayText1 || "";
             state.essayText2 = data.essayText2 || "";
 
-            // Synchronize UI elements
             dom.studentGrade.value = state.grade;
             dom.studentClass.value = state.classVal;
             dom.studentNumber.value = state.number;
@@ -1032,34 +1148,17 @@
             renderManuscripts();
         }
 
-        // Toast notifications
-        function showToast(message, type = 'success') {
-            dom.toastMessage.textContent = message;
-            if (type === 'success') {
-                dom.toastIcon.innerHTML = '<i class="fa-solid fa-circle-check"></i>';
-                dom.toastIcon.className = 'text-emerald-400';
-            } else if (type === 'error') {
-                dom.toastIcon.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i>';
-                dom.toastIcon.className = 'text-amber-500';
-            }
-            
-            dom.toast.classList.remove('translate-y-20', 'opacity-0');
-            dom.toast.classList.add('translate-y-0', 'opacity-100');
-            
-            setTimeout(() => {
-                dom.toast.classList.add('translate-y-20', 'opacity-0');
-                dom.toast.classList.remove('translate-y-0', 'opacity-100');
-            }, 3000);
+        function getCharCount(text) {
+            if (!text) return 0;
+            return text.replace(/[\s　\n\r]/g, '').length;
         }
 
-        // Helper: Convert Half-width letters to full-width
         function convertHalfToFull(str) {
             return str.replace(/[!-~]/g, function(s) {
                 return String.fromCharCode(s.charCodeAt(0) + 0xFEE0);
             }).replace(/ /g, '　');
         }
 
-        // Structure text blocks precisely in 25 columns layout
         function getGenkoYoshiStructure(text, maxLimit) {
             const cols = 25;
             const minRows = Math.max(Math.ceil(maxLimit / cols), 16);
@@ -1107,32 +1206,27 @@
             };
         }
 
-        // Render main manuscript cells and metrics
         function renderManuscripts() {
-            // Meta-indicators alignment
             document.querySelectorAll('.previewGrade').forEach(el => el.textContent = state.grade || ' 　 ');
             document.querySelectorAll('.previewClass').forEach(el => el.textContent = state.classVal || ' 　 ');
             document.querySelectorAll('.previewNumber').forEach(el => el.textContent = state.number || ' 　 ');
             document.querySelectorAll('.previewName').forEach(el => el.textContent = state.name || '未入力');
 
-            // Render Theme 1 Grid
             dom.theme1TitleLabel.textContent = state.theme1;
             dom.targetCount1.textContent = `${state.theme1Min}〜${state.theme1Max}`;
             const struct1 = getGenkoYoshiStructure(state.essayText1, state.theme1Max);
-            renderPaperGrid(dom.manuscriptGrid1, struct1, state.essayText1, state.theme1Min, state.theme1Max, dom.hiddenEssayTextarea1, 1);
+            renderPaperGrid(dom.manuscriptGrid1, struct1, state.essayText1, state.theme1Min, state.theme1Max, dom.hiddenEssayTextarea1);
 
-            // Render Theme 2 Grid
             dom.theme2TitleLabel.textContent = state.theme2;
             dom.targetCount2.textContent = `${state.theme2Min}〜${state.theme2Max}`;
             const struct2 = getGenkoYoshiStructure(state.essayText2, state.theme2Max);
-            renderPaperGrid(dom.manuscriptGrid2, struct2, state.essayText2, state.theme2Min, state.theme2Max, dom.hiddenEssayTextarea2, 2);
+            renderPaperGrid(dom.manuscriptGrid2, struct2, state.essayText2, state.theme2Min, state.theme2Max, dom.hiddenEssayTextarea2);
 
-            // Live counters update (Excluding spaces/newlines for count, keeping grid render intact)
             updateStats(getCharCount(state.essayText1), state.theme1Min, state.theme1Max, dom.currentCount1, dom.remainingText1, dom.progressBar1);
             updateStats(getCharCount(state.essayText2), state.theme2Min, state.theme2Max, dom.currentCount2, dom.remainingText2, dom.progressBar2);
         }
 
-        function renderPaperGrid(gridContainer, struct, sourceText, min, max, targetTextarea, themeNo) {
+        function renderPaperGrid(gridContainer, struct, sourceText, min, max, targetTextarea) {
             gridContainer.innerHTML = '';
             
             const caretPos = targetTextarea.selectionStart;
@@ -1147,7 +1241,6 @@
                     cell.textContent = cellData.char;
                 }
 
-                // Range coloring boundaries (Based on actual cell render sequence for visual layout)
                 if (index >= max) {
                     if (cellData.char) {
                         cell.classList.add('bg-rose-50', 'text-rose-700', 'border-rose-200');
@@ -1162,7 +1255,6 @@
                     }
                 }
 
-                // Focusing custom virtual caret indicators
                 if (isFocused) {
                     let hasCaret = false;
                     if (cellData.sourceIndex !== null && cellData.sourceIndex === caretPos) {
@@ -1182,7 +1274,6 @@
                     }
                 }
 
-                // Periodic count labels inside paper grid
                 if (index > 0 && (index + 1) % 100 === 0) {
                     const label = document.createElement('span');
                     label.className = "absolute bottom-0 right-0.5 text-[8px] text-emerald-700/40 select-none pointer-events-none font-bold";
@@ -1190,11 +1281,9 @@
                     cell.appendChild(label);
                 }
 
-                // Click event handles typing redirect
                 cell.addEventListener('mousedown', (e) => {
                     e.preventDefault();
                     targetTextarea.focus();
-
                     if (cellData.sourceIndex !== null) {
                         targetTextarea.setSelectionRange(cellData.sourceIndex, cellData.sourceIndex);
                     } else {
@@ -1237,7 +1326,6 @@
         }
 
         function renderPrintArea() {
-            // Setup metainfo
             document.querySelectorAll('.printGradeClass').forEach(el => {
                 el.textContent = `${state.grade || ' 　 '}年 ${state.classVal || ' 　 '}組`;
             });
@@ -1248,7 +1336,10 @@
                 el.textContent = state.name || '未入力';
             });
 
-            // Page 1 Setup (Theme 1)
+            // Set constraints on PDF label limits
+            dom.printThemeRangeMax1.textContent = state.theme1Max;
+            dom.printThemeRangeMax2.textContent = state.theme2Max;
+
             dom.printTheme1.textContent = state.theme1;
             dom.printThemeRange1.textContent = `${state.theme1Min}〜${state.theme1Max}`;
             dom.printCharCount1.textContent = getCharCount(state.essayText1);
@@ -1257,7 +1348,6 @@
             renderPrintGrid(dom.printGrid1, struct1);
             dom.printGridCount1.textContent = struct1.cells.filter(c => c.char !== '').length;
 
-            // Page 2 Setup (Theme 2)
             dom.printTheme2.textContent = state.theme2;
             dom.printThemeRange2.textContent = `${state.theme2Min}〜${state.theme2Max}`;
             dom.printCharCount2.textContent = getCharCount(state.essayText2);
@@ -1288,9 +1378,34 @@
             });
         }
 
+        function adjustPreviewScale() {
+            const wrapper = document.getElementById('printableAreaWrapper');
+            if (!wrapper) return;
+            const parent = wrapper.parentElement;
+            if (!parent) return;
+            
+            const parentWidth = parent.clientWidth;
+            const designWidth = 794;
+            
+            // 現在の選択プレビューモードに応じて高さを切り替える（自動フィッティングの精度向上）
+            let designHeight = 1120;
+            if (state.previewMode === 'all') {
+                designHeight = (1120 * 2) + 128; // mt-32 の間隔
+            }
+
+            if (parentWidth > 0 && parentWidth < designWidth) {
+                const scale = parentWidth / designWidth;
+                wrapper.style.transform = `scale(${scale})`;
+                parent.style.height = `${designHeight * scale}px`;
+            } else {
+                wrapper.style.transform = 'none';
+                parent.style.height = 'auto';
+            }
+        }
+
         async function runAiAssessment() {
             if (!state.essayText1.trim() && !state.essayText2.trim()) {
-                showToast('テーマ1・テーマ2どちらの原稿用紙にも作文が入力されていません。', 'error');
+                showToast('テーマ1・テーマ2どちらの作文も入力されていません。先に作文を入力してください。', 'error');
                 return;
             }
 
@@ -1309,8 +1424,7 @@
             const systemPrompt = `あなたは優しく丁寧な国語の先生です。
 児童・生徒が同時に書いた2つの異なるテーマ（テーマ1、テーマ2）の作文を分析して、アドバイスを生成してください。
 現在指定されている学年（${activeGrade}）に適した優しい表現、正しい日本語、分かりやすい構成になるよう添削してください。
-
-それぞれのテーマについて、設定されている文字数範囲（空白を除く実文字数）に合致しているかも文字数指導の視点から評価に反映してください。
+それぞれのテーマについて、設定されている文字数範囲（空白を除く実文字数）に合致しているかも文字数指導 of 視点から評価に反映してください。
 
 出力は必ず以下のJSONフォーマットに厳密に従ってください。
 {
@@ -1329,18 +1443,16 @@
 }`;
 
             const userQuery = `
-学年設定: ${activeGrade}
+            学年設定: ${activeGrade}
 
-【テーマ1】「${state.theme1}」 （指定範囲：${state.theme1Min}〜${state.theme1Max}字）
-実際の入力（空白を除く：${getCharCount(state.essayText1)}字）：
-${state.essayText1 || '（未入力です）'}
+            【テーマ1】「${state.theme1}」 （指定範囲：${state.theme1Min}〜${state.theme1Max}字）
+            実際の入力：${state.essayText1 || '（未入力です）'}
 
-【テーマ2】「${state.theme2}」 （指定範囲：${state.theme2Min}〜${state.theme2Max}字）
-実際の入力（空白を除く：${getCharCount(state.essayText2)}字）：
-${state.essayText2 || '（未入力です）'}
-`;
+            【テーマ2】「${state.theme2}」 （指定範囲：${state.theme2Min}〜${state.theme2Max}字）
+            実際の入力：${state.essayText2 || '（未入力です）'}
+            `;
 
-            const apiKey = "";
+            const apiKey = ""; // Built-in preview environment injection
             const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
 
             const payload = {
@@ -1383,7 +1495,7 @@ ${state.essayText2 || '（未入力です）'}
             let success = false;
             let resultJson = null;
 
-            for (let attempt = 0; attempt < 3; attempt++) {
+            for (let attempt = 0; attempt < 5; attempt++) {
                 try {
                     const response = await fetch(apiUrl, {
                         method: 'POST',
@@ -1391,7 +1503,7 @@ ${state.essayText2 || '（未入力です）'}
                         body: JSON.stringify(payload)
                     });
 
-                    if (!response.ok) throw new Error();
+                    if (!response.ok) throw new Error("API request failed");
 
                     const result = await response.json();
                     const candidateText = result.candidates?.[0]?.content?.parts?.[0]?.text;
@@ -1407,7 +1519,7 @@ ${state.essayText2 || '（未入力です）'}
             }
 
             if (!success || !resultJson) {
-                showToast('AIによる作文添削処理に失敗しました。少し時間をおいて再度実行してください。', 'error');
+                showToast('AI先生との通信に失敗しました。少し待ってからもう一度お試しください。', 'error');
                 closeAiModal();
                 return;
             }
@@ -1421,7 +1533,7 @@ ${state.essayText2 || '（未入力です）'}
             
             updateAiTabUI();
             renderSelectedAiResult();
-            showToast('AI先生の添削が完了しました！タブでお題を切り替えて読めます。');
+            showToast('AI先生の添削報告書が届きました！');
         }
 
         function renderSelectedAiResult() {
@@ -1466,9 +1578,36 @@ ${state.essayText2 || '（未入力です）'}
             }, 150);
         }
 
+        // プレビュー表示切り替えメソッド
+        function setPreviewMode(mode) {
+            state.previewMode = mode;
+            
+            // タブのボタンスタイリング切り替え
+            dom.previewTabPage1.className = "px-4 py-2 text-xs font-bold rounded-lg transition duration-200 flex items-center gap-1.5 " + (mode === 'page1' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-200');
+            dom.previewTabPage2.className = "px-4 py-2 text-xs font-bold rounded-lg transition duration-200 flex items-center gap-1.5 " + (mode === 'page2' ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-200');
+            dom.previewTabAll.className = "px-4 py-2 text-xs font-bold rounded-lg transition duration-200 flex items-center gap-1.5 " + (mode === 'all' ? 'bg-slate-700 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-200');
+
+            // プレビューページの表示・非表示の切り替え
+            if (mode === 'page1') {
+                dom.pdfPage1.classList.remove('hidden');
+                dom.pdfPage2.classList.add('hidden');
+            } else if (mode === 'page2') {
+                dom.pdfPage1.classList.add('hidden');
+                dom.pdfPage2.classList.remove('hidden');
+                // 1枚のみ表示されるためマージンをカット
+                dom.pdfPage2.classList.remove('mt-32');
+            } else if (mode === 'all') {
+                dom.pdfPage1.classList.remove('hidden');
+                dom.pdfPage2.classList.remove('hidden');
+                dom.pdfPage2.classList.add('mt-32');
+            }
+
+            // スケーリングを再設定してピッタリフィットさせる
+            adjustPreviewScale();
+        }
+
         function initializeEvents() {
             
-            // Connect native hidden textareas for typing
             dom.hiddenEssayTextarea1.addEventListener('input', () => {
                 state.essayText1 = dom.hiddenEssayTextarea1.value;
                 renderManuscripts();
@@ -1480,13 +1619,11 @@ ${state.essayText2 || '（未入力です）'}
                 triggerAutoSave();
             });
 
-            // Focus synchronization across cursor changes
             ['keyup', 'click', 'focus', 'blur', 'selectionchange'].forEach(event => {
                 dom.hiddenEssayTextarea1.addEventListener(event, () => renderManuscripts());
                 dom.hiddenEssayTextarea2.addEventListener(event, () => renderManuscripts());
             });
 
-            // Dynamic 25 Column layout counts initial alignment
             document.querySelectorAll('.colNumbers').forEach(container => {
                 container.innerHTML = '';
                 for (let i = 1; i <= 25; i++) {
@@ -1496,7 +1633,6 @@ ${state.essayText2 || '（未入力です）'}
                 }
             });
 
-            // Student profile synchronization
             [dom.studentGrade, dom.studentClass, dom.studentNumber, dom.studentName].forEach(el => {
                 el.addEventListener('input', () => {
                     state.grade = dom.studentGrade.value;
@@ -1508,23 +1644,21 @@ ${state.essayText2 || '（未入力です）'}
                 });
             });
 
-            // Manual Save and Manual Load action click listeners
             dom.manualSaveBtn.addEventListener('click', async () => {
                 await saveData();
-                showToast('現在の内容を一時保存しました！');
+                showToast('現在の入力内容をクラウド下書き保存しました！');
             });
 
             dom.manualLoadBtn.addEventListener('click', () => {
                 showCustomConfirm(
-                    '保存データの復元確認',
-                    '最後に保存した作文データを呼び出して復元しますか？（現在入力中のテキストは上書きされます）',
+                    '下書きの読み込み確認',
+                    '最後に保存した下書き作文データを復元しますか？（現在の文章は上書きされます）',
                     async () => {
                         await loadSavedData();
                     }
                 );
             });
 
-            // Settings Configuration Actions
             dom.toggleSettingsBtn.addEventListener('click', () => dom.settingsPanel.classList.toggle('hidden'));
             dom.closeSettingsBtn.addEventListener('click', () => dom.settingsPanel.classList.add('hidden'));
 
@@ -1534,9 +1668,9 @@ ${state.essayText2 || '（未入力です）'}
                 const min2 = parseInt(dom.configTheme2Min.value, 10);
                 const max2 = parseInt(dom.configTheme2Max.value, 10);
 
-                if (isNaN(min1) || min1 < 0 || isNaN(max1) || max1 < min1 || 
-                    isNaN(min2) || min2 < 0 || isNaN(max2) || max2 < min2) {
-                    showToast('有効な文字数範囲を設定してください。', 'error');
+                if (isNaN(min1) || min1 < 0 || max1 < min1 || 
+                    isNaN(min2) || min2 < 0 || max2 < min2) {
+                    showToast('有効な文字数範囲を指定してください。', 'error');
                     return;
                 }
 
@@ -1550,10 +1684,9 @@ ${state.essayText2 || '（未入力です）'}
                 dom.settingsPanel.classList.add('hidden');
                 renderManuscripts();
                 triggerAutoSave();
-                showToast('お題と文字数範囲を反映しました！');
+                showToast('作文設定を更新しました！');
             });
 
-            // Clean zenkaku converter
             dom.zenkakuConvertBtn.addEventListener('click', () => {
                 let changed = false;
                 if (dom.hiddenEssayTextarea1.value) {
@@ -1572,13 +1705,12 @@ ${state.essayText2 || '（未入力です）'}
                 if (changed) {
                     renderManuscripts();
                     triggerAutoSave();
-                    showToast('作文用紙内のすべての半角文字を全角へ変換しました！');
+                    showToast('作文の英数字や記号を全角に変換しました！');
                 } else {
-                    showToast('作文がまだ入力されていません。', 'error');
+                    showToast('変換対象のテキストが入力されていません。', 'error');
                 }
             });
 
-            // AI Action Events
             dom.aiTabBtn1.addEventListener('click', () => {
                 state.aiSelectedTab = 1;
                 updateAiTabUI();
@@ -1594,7 +1726,6 @@ ${state.essayText2 || '（未入力です）'}
             dom.closeAiModalBtn.addEventListener('click', closeAiModal);
             dom.closeAiModalFooterBtn.addEventListener('click', closeAiModal);
 
-            // Suggested text copy
             dom.copyRewriteBtn.addEventListener('click', () => {
                 const text = dom.aiRewrittenText.textContent;
                 const tempTextArea = document.createElement('textarea');
@@ -1603,21 +1734,20 @@ ${state.essayText2 || '（未入力です）'}
                 tempTextArea.select();
                 try {
                     document.execCommand('copy');
-                    showToast('AI添削リライト文章をコピーしました！');
+                    showToast('AIの作成したお手本をコピーしました！');
                 } catch (err) {
                     showToast('コピーに失敗しました', 'error');
                 }
                 document.body.removeChild(tempTextArea);
             });
 
-            // Apply AI rewriting
             dom.applyRewriteBtn.addEventListener('click', () => {
                 const text = dom.aiRewrittenText.textContent.trim();
                 if (text) {
                     const targetName = state.aiSelectedTab === 1 ? 'テーマ1' : 'テーマ2';
                     showCustomConfirm(
-                        'AI先生のお手本文章の適用',
-                        `現在の【${targetName}】の作文を、このAI添削文章に置き換えますか？（現在の文章は上書きされます）`,
+                        'AIお手本文章の適用確認',
+                        `現在の【${targetName}】の作文を、このAI of 添削・書き換え例に置き換えますか？`,
                         () => {
                             if (state.aiSelectedTab === 1) {
                                 dom.hiddenEssayTextarea1.value = text;
@@ -1629,17 +1759,16 @@ ${state.essayText2 || '（未入力です）'}
                             renderManuscripts();
                             triggerAutoSave();
                             closeAiModal();
-                            showToast(`${targetName}にAI添削文を反映させました。`);
+                            showToast(`${targetName}にAIの添削・書き換え文を反映しました。`);
                         }
                     );
                 }
             });
 
-            // Global Clear Event
             dom.clearBtn.addEventListener('click', () => {
                 showCustomConfirm(
-                    '作文と生徒情報の完全消去',
-                    '両方の作文用紙および児童・生徒情報をすべて消去します。よろしいですか？（この操作は元に戻せません）',
+                    '作文の全クリア確認',
+                    '両方の作文用紙および名前、クラスなどの入力をすべて消去します。よろしいですか？',
                     () => {
                         dom.hiddenEssayTextarea1.value = '';
                         dom.hiddenEssayTextarea2.value = '';
@@ -1657,12 +1786,11 @@ ${state.essayText2 || '（未入力です）'}
 
                         renderManuscripts();
                         triggerAutoSave();
-                        showToast('すべての内容を消去しました。', 'error');
+                        showToast('すべての入力を消去しました。', 'error');
                     }
                 );
             });
 
-            // Render Preview Modal
             dom.confirmBtn.addEventListener('click', () => {
                 const validates = [
                     { element: dom.studentGrade, name: '学年' },
@@ -1681,22 +1809,37 @@ ${state.essayText2 || '（未入力です）'}
                 });
 
                 if (missing.length > 0) {
-                    showToast(`必須項目が入力されていません: ${missing.join(', ')}`, 'error');
+                    showToast(`生徒情報が入力されていません: ${missing.join(', ')}`, 'error');
                     return;
                 }
 
                 if (!state.essayText1.trim() && !state.essayText2.trim()) {
-                    showToast('どちらか一方のテーマには必ず作文を入力してください。', 'error');
+                    showToast('どちらか一方のお題には必ず作文を入力してください。', 'error');
                     return;
                 }
 
                 renderPrintArea();
 
+                // プレビューの初期設定を「1ページ目」に合わせる
+                setPreviewMode('page1');
+
                 dom.confirmationModal.classList.remove('hidden');
                 setTimeout(() => {
                     dom.modalCard.classList.remove('scale-95');
                     dom.modalCard.classList.add('scale-100');
+                    adjustPreviewScale();
                 }, 50);
+            });
+
+            // プレビュータブボタンイベント
+            dom.previewTabPage1.addEventListener('click', () => setPreviewMode('page1'));
+            dom.previewTabPage2.addEventListener('click', () => setPreviewMode('page2'));
+            dom.previewTabAll.addEventListener('click', () => setPreviewMode('all'));
+
+            window.addEventListener('resize', () => {
+                if (!dom.confirmationModal.classList.contains('hidden')) {
+                    adjustPreviewScale();
+                }
             });
 
             function closeModal() {
@@ -1705,69 +1848,187 @@ ${state.essayText2 || '（未入力です）'}
                 setTimeout(() => dom.confirmationModal.classList.add('hidden'), 150);
             }
             dom.closeModalBtn.addEventListener('click', closeModal);
+            dom.closeModalBtnDesktop.addEventListener('click', closeModal);
             dom.modalBackBtn.addEventListener('click', closeModal);
 
-            // Multipage PDF Generation trigger via html2pdf
+            // =========================================
+            // BROWSER PRINT ENGINE (PRO)
+            // =========================================
+            dom.printBtn.addEventListener('click', () => {
+                showToast('印刷画面を起動します。「背景のグラフィック」をONにして印刷してください。');
+
+                const pages = dom.printableArea.querySelectorAll('.pdf-page');
+                
+                // 印刷の一時同期: ページ切替タブで片方非表示になっていてもすべて印刷されるように
+                const page1Hidden = dom.pdfPage1.classList.contains('hidden');
+                const page2Hidden = dom.pdfPage2.classList.contains('hidden');
+                dom.pdfPage1.classList.remove('hidden');
+                dom.pdfPage2.classList.remove('hidden');
+                
+                pages.forEach(page => page.classList.remove('mt-32'));
+
+                setTimeout(() => {
+                    window.print();
+
+                    // 終わったら元の表示モードに戻す
+                    pages.forEach((page, index) => {
+                        if (index > 0) {
+                            page.classList.add('mt-32');
+                        }
+                    });
+                    if (page1Hidden) dom.pdfPage1.classList.add('hidden');
+                    if (page2Hidden) dom.pdfPage2.classList.add('hidden');
+                    if (state.previewMode === 'page2') dom.pdfPage2.classList.remove('mt-32');
+                }, 150);
+            });
+
+            // =========================================
+            // HIGH-ACCURACY MULTI-PAGE PDF GENERATION ENGINE
+            // =========================================
             dom.downloadPdfBtn.addEventListener('click', () => {
-                showToast('2枚組PDFを出力しています。そのまま少々お待ちください...');
+                const originalBtnHtml = dom.downloadPdfBtn.innerHTML;
+                
+                dom.downloadPdfBtn.disabled = true;
+                dom.downloadPdfBtn.innerHTML = '<i class="fa-solid fa-circle-notch animate-spin"></i> <span>PDFを作成中...</span>';
+
+                showToast('2枚組PDFを出力しています。少々お待ちください...');
 
                 const safeName = `作文2枚組_${state.grade || '無所属'}_${state.classVal || ''}_${state.number || '0'}_${state.name || '未設定'}.pdf`;
 
-                // iOS / iPadOS Safari compatibility engine setup
-                // Clone printableArea to document body root to bypass CSS fixed and transform scaling rendering issues on Safari
-                const printContainer = document.getElementById('printableArea');
-                const printClone = printContainer.cloneNode(true);
-                
-                // Set absolute outside viewport styles for the clone to avoid layout shift
-                printClone.style.position = 'absolute';
-                printClone.style.top = '-9999px';
-                printClone.style.left = '0';
-                printClone.style.width = '794px';
-                printClone.style.display = 'block';
-                document.body.appendChild(printClone);
+                const pages = dom.printableArea.querySelectorAll('.pdf-page');
 
-                // Check user agent to optimize scaling for iPad/iPhone (avoid WebGL/RAM crash)
+                // PDF出力の一時同期: ページ切替タブで非表示になっていても両ページ出力
+                const page1Hidden = dom.pdfPage1.classList.contains('hidden');
+                const page2Hidden = dom.pdfPage2.classList.contains('hidden');
+                dom.pdfPage1.classList.remove('hidden');
+                dom.pdfPage2.classList.remove('hidden');
+
+                // 白紙ページ挿入を防ぐため、印刷瞬間だけ2ページ目のマージン（mt-32）を取り払う
+                pages.forEach(page => {
+                    page.classList.remove('mt-32'); 
+                });
+
+                // モーダルのスクロール領域がキャプチャ範囲を制限するのを防ぐため、全て展開
+                const originalMaxHeight = dom.modalCard.style.maxHeight;
+                const originalOverflow = dom.modalCard.style.overflow;
+                dom.modalCard.style.maxHeight = 'none';
+                dom.modalCard.style.overflow = 'visible';
+
+                const wrapper = document.getElementById('printableAreaWrapper');
+                const container = document.getElementById('printableAreaContainer');
+                const modalScrollArea = document.getElementById('printableAreaModalScroll');
+
+                const originalTransform = wrapper.style.transform;
+                wrapper.style.transform = 'none';
+
+                container.classList.remove('justify-center');
+                container.classList.add('justify-start');
+
+                modalScrollArea.classList.remove('p-3', 'sm:p-6');
+                modalScrollArea.classList.add('p-0');
+
+                const oldScrollY = window.scrollY;
+                const oldScrollX = window.scrollX;
+                window.scrollTo(0, 0);
+
                 const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-                const optimalScale = isIOS ? 1.5 : 2; // scale: 1.5 is extremely stable and sharp on iOS Safari
+                const optimalScale = isIOS ? 1.5 : 2;
 
                 const opt = {
-                    margin:       [0, 0, 0, 0],
+                    margin:       0,
                     filename:     safeName,
-                    image:        { type: 'jpeg', quality: 0.95 },
+                    image:        { type: 'jpeg', quality: 0.98 },
                     html2canvas:  { 
                         scale: optimalScale, 
                         useCORS: true,
                         letterRendering: true,
                         logging: false,
-                        scrollY: 0,
-                        scrollX: 0
+                        scrollY: -window.scrollY,
+                        scrollX: 0,
+                        width: 794,          /* 用紙幅ぴったりでキャプチャ */
+                        windowWidth: 794
                     },
                     jsPDF:        { 
                         unit: 'mm', 
                         format: 'a4', 
                         orientation: 'portrait' 
                     },
-                    pagebreak: {
-                        mode: ['css', 'legacy'],
-                        before: '.pdf-page'
-                    }
+                    pagebreak: { mode: ['css', 'legacy'] }
                 };
 
-                // Wait 150ms for cloned element render tree stabilization before processing
+                const restoreLayout = () => {
+                    pages.forEach((page, index) => {
+                        if (index > 0) {
+                            page.classList.add('mt-32'); // mt-32 に復元
+                        }
+                    });
+                    
+                    // 表示状態を元のタブ選択に戻す
+                    if (page1Hidden) dom.pdfPage1.classList.add('hidden');
+                    if (page2Hidden) dom.pdfPage2.classList.add('hidden');
+                    if (state.previewMode === 'page2') dom.pdfPage2.classList.remove('mt-32');
+
+                    wrapper.style.transform = originalTransform;
+                    container.classList.add('justify-center');
+                    container.classList.remove('justify-start');
+                    modalScrollArea.classList.add('p-3', 'sm:p-6');
+                    modalScrollArea.classList.remove('p-0');
+
+                    dom.modalCard.style.maxHeight = originalMaxHeight;
+                    dom.modalCard.style.overflow = originalOverflow;
+                    window.scrollTo(oldScrollX, oldScrollY);
+                    
+                    dom.downloadPdfBtn.disabled = false;
+                    dom.downloadPdfBtn.innerHTML = originalBtnHtml;
+                };
+
                 setTimeout(() => {
-                    html2pdf().from(printClone).set(opt).save().then(() => {
-                        showToast('2ページPDFの作成・ダウンロードが完了しました！');
-                        document.body.removeChild(printClone); // Clean up memory
+                    html2pdf().from(dom.printableArea).set(opt).save().then(() => {
+                        restoreLayout();
+                        showToast('PDFのダウンロードが完了しました！');
                         closeModal();
                     }).catch(err => {
                         console.error('PDF error: ', err);
-                        showToast('PDFの出力処理でエラーが発生しました。', 'error');
-                        if (printClone.parentNode) {
-                            document.body.removeChild(printClone);
-                        }
+                        restoreLayout();
+                        showToast('PDF of 出力処理でエラーが発生しました。', 'error');
                     });
-                }, 150);
+                }, 400);
             });
+        }
+
+        // Initialize Firestore & Auth with strict priority
+        async function initStorageAndAuth() {
+            try {
+                const appIdVal = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+                if (typeof __firebase_config !== 'undefined' && __firebase_config) {
+                    const firebaseConfig = JSON.parse(__firebase_config);
+                    const app = initializeApp(firebaseConfig);
+                    db = getFirestore(app);
+                    auth = getAuth(app);
+
+                    // Sign-in processing with token priority
+                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                        await signInWithCustomToken(auth, __initial_auth_token);
+                    } else {
+                        await signInAnonymously(auth);
+                    }
+
+                    userId = auth.currentUser?.uid || crypto.randomUUID();
+                    isFirebaseActive = true;
+                    updateSaveStatus('cloud-idle');
+
+                    // Synchronize and restore cloud drafts
+                    await loadSavedData();
+                } else {
+                    throw new Error("No config available");
+                }
+            } catch (err) {
+                console.warn("Firestore not active or local environment. Saving locally.", err);
+                isFirebaseActive = false;
+                userId = 'local-user';
+                updateSaveStatus('local-active');
+                loadFromLocalStorage();
+            }
         }
 
         // Initialize state variables on boot load
@@ -1782,9 +2043,9 @@ ${state.essayText2 || '（未入力です）'}
             initializeEvents();
             renderManuscripts();
 
-            // Run Cloud initialization process
-            await initializeFirebase();
+            await initStorageAndAuth();
         };
+
     </script>
 </body>
 </html>
